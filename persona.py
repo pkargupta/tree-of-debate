@@ -2,7 +2,7 @@ from paper_details import Paper
 
 class PaperAuthor:
     def __init__(self, model_id, id, paper: Paper, focus) -> None:
-        self.model = None # define model
+        self.model = None # define model - Llama 3.1
         self.paper_details = paper
         self.focus = focus
         self.id = None
