@@ -19,7 +19,7 @@ class PaperAuthor:
         If the paper is a focus paper, and the debate round is round #1, the topic should be "I am great".
         If the paper is NOT a focus paper, the topic should be the focus paper's arguments.
         """
-        raise NotImplemented
+        raise NotImplemented # TODO: SHIVAM (write a prompt, write the output json format)
 
     def preempt_arguments(self, counter_claims, counter_evidence):
         """
@@ -29,7 +29,7 @@ class PaperAuthor:
         #   Does my paper also include or address a similar claim/idea?
         #   Does my paper propose a better claim/idea to address the problem solved by p_i's claim?
 
-        augmented_topic = ""
+        augmented_topic = ""# TODO: jonks <3
         return self.gather_evidence(augmented_topic)
     
     def present_argument(self, round_topic, f_claim, f_evidence, counter_claim, counter_evidence):
@@ -38,7 +38,7 @@ class PaperAuthor:
         """
 
         prompt = ""
-        argument = self.model.generate()
+        argument = self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
         # parse argument
 
         return argument
@@ -48,7 +48,7 @@ class PaperAuthor:
         Respond to the paper given the current state of debate.
         """
 
-        augmented_topic = ""
+        augmented_topic = "" # TODO: SHIVAM (write a prompt, write the output json format)
         argument = self.generate_arguments(augmented_topic, evidence)
         return argument
     
@@ -58,4 +58,4 @@ class PaperAuthor:
         """
 
         debate_template = ""
-        self.model.generate(debate_template)
+        self.model.generate(debate_template) # TODO: SHIVAM (write a prompt, write the output json format)
