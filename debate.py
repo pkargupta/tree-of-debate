@@ -1,4 +1,5 @@
 from persona import PaperAuthor
+from typing import List
 
 class DebateNode:
     def __init__(self, round_topic, parent=None) -> None:
@@ -12,12 +13,23 @@ class DebateNode:
         self.parent = parent
         self.round_topic = round_topic
 
-    def conduct_self_deliberation(self, topic, paper_authors):
+    def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor]):
         for paper_author in paper_authors:
             # gather evidence
-            self.evidence[paper_author.id].append(paper_author.gather_evidence(topic))
+            evidence = paper_author.gather_evidence(topic)
+            self.evidence[paper_author.id].append(evidence)
 
-            # develop argument
+            # develop k arguments
+            self.arguments[paper_author.id].append(paper_author.generate_arguments(topic, evidence))
+        
+        # preemption
+        for i in range(len(paper_authors)):
+            other_arguments = [self.arguments[paper_authors[j].id] for j in range(len(paper_authors)) if j != i]
+            other_evidence = [self.evidence[paper_authors[j].id] for j in range(len(paper_authors)) if j != i]
+
+            preemption = paper_authors[i].preempt_arguments(other_arguments, other_evidence)
+            self.evidence[paper_authors[i].id].append(preemption)          
+        
 
     def conduct_debate(self, focus_paper: PaperAuthor, cited_paper: PaperAuthor):
         # focus paper presents argument

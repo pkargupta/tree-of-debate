@@ -2,11 +2,26 @@ from debate import DebateNode, DebateTree
 from paper_details import Paper
 from persona import PaperAuthor
 
-paper_authors = []
+focus_paper = PaperAuthor(
+    model = "Llama 3.1",
+    paper = Paper("TreeInstruct is great"),
+    focus=True,
+    id=0
+)
+
+cited_paper = PaperAuthor(
+    model = "Llama 3.1",
+    paper = Paper("Knowledge tracing is ok"),
+    focus=False,
+    id=1
+)
+
+paper_authors = [focus_paper, cited_paper]
+leaf_node_label = "Educational Conversations"
 
 # each node has a topic
-root_node = DebateNode("leaf_node_label")
-subtrees = root_node.conduct_self_deliberation # k new, finer topics to discuss
+root_node = DebateNode(leaf_node_label)
+subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors) # k new, finer topics to discuss
 
 """
 TI and knowledge tracing
