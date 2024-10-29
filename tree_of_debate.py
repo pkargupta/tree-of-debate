@@ -1,20 +1,24 @@
-from debate import DebateNode, DebateTree
+from debate import DebateNode
 from paper_details import Paper
 from persona import PaperAuthor
+from moderator import Moderator
+from typing import List
 
 focus_paper = PaperAuthor(
-    model = "Llama 3.1",
-    paper = Paper("TreeInstruct is great"),
+    model_id = "Llama 3.1",
+    paper = Paper("TreeInstruct is great. TreeInstruct is great. TreeInstruct is great. TreeInstruct is great. TreeInstruct is great. TreeInstruct is great."),
     focus=True,
     id=0
 )
 
 cited_paper = PaperAuthor(
-    model = "Llama 3.1",
-    paper = Paper("Knowledge tracing is ok"),
+    model_id = "Llama 3.1",
+    paper = Paper("Knowledge tracing is ok. Knowledge tracing is ok. Knowledge tracing is ok. Knowledge tracing is ok. Knowledge tracing is ok. Knowledge tracing is ok. "),
     focus=False,
     id=1
 )
+
+moderator = Moderator("Llama 3.1")
 
 paper_authors = [focus_paper, cited_paper]
 leaf_node_label = "Educational Conversations"
@@ -38,13 +42,18 @@ level 2: tree_is_good | tree_is_bad || sse_with_nl | sse_with_vector
 
 """
 
-queue_of_rounds = []
+conversation_history = []
+
+queue_of_rounds: List[DebateNode] = []
 queue_of_rounds.extend(subtrees)
 
 while len(queue_of_rounds) > 0:
-    subtree = queue_of_rounds.popleft()
-    round = DebateNode(subtree)
-    is_expand = round.conduct_debate()
-    if is_expand:
-        subtrees = round.conduct_self_deliberation()
-        queue_of_rounds.extend(subtrees)
+    round = queue_of_rounds.pop(0)
+    conversation, new_focus_arg, new_cited_arg = round.conduct_debate(focus_paper, cited_paper)
+    conversation_history.extend(conversation)
+    if moderator.is_expand(round.arguments, [new_focus_arg, new_cited_arg]):
+        new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors)
+        queue_of_rounds.extend(new_subtrees)
+
+with open('conversation_history.txt', 'w+') as f:
+    f.write('\n'.join(conversation_history))

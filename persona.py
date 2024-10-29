@@ -1,17 +1,17 @@
 from paper_details import Paper
 
 class PaperAuthor:
-    def __init__(self, model_id, id, paper: Paper, focus) -> None:
+    def __init__(self, model_id, id, paper: Paper, focus):
         self.model = None # define model - Llama 3.1
         self.paper = paper
         self.focus = focus
-        self.id = None
+        self.id = id
 
     def gather_evidence(self, topic):
         """
         Use paper chunks to get relevant segments to the topic.
         """
-        raise NotImplemented
+        return "much evidence"
 
     def generate_arguments(self, topic, evidence=False, k=2):
         """
@@ -19,7 +19,7 @@ class PaperAuthor:
         If the paper is a focus paper, and the debate round is round #1, the topic should be "I am great".
         If the paper is NOT a focus paper, the topic should be the focus paper's arguments.
         """
-        raise NotImplemented # TODO: SHIVAM (write a prompt, write the output json format)
+        return "much arguments"
 
     def preempt_arguments(self, counter_claims, counter_evidence):
         """
@@ -36,12 +36,12 @@ class PaperAuthor:
         """
         Generate an argument based on your claims and evidences and other paper's claims and evidences.
         """
+        return "much argument presentation"
+        # prompt = ""
+        # argument = self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
+        # # parse argument
 
-        prompt = ""
-        argument = self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
-        # parse argument
-
-        return argument
+        # return argument
 
     def respond_to_argument(self, other_argument, claim, evidence, counter_claim, counter_evidence):
         """
@@ -57,5 +57,6 @@ class PaperAuthor:
         Strengthen the final argument at the debate node for a paper.
         """
 
-        debate_template = ""
-        self.model.generate(debate_template) # TODO: SHIVAM (write a prompt, write the output json format)
+        # debate_template = ""
+        # self.model.generate(debate_template) # TODO: SHIVAM (write a prompt, write the output json format)
+        return "much argument revision"
