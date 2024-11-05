@@ -1,7 +1,7 @@
 from retrieval.retrieval import load_corpus, embed_texts, find_top_k
 
 class Paper:
-    def __init__(self, path, chunk_size=2) -> None:
+    def __init__(self, path, chunk_size=7) -> None:
         self.text = load_corpus(path)
         self.chunks = []
         sentences = self.text.split(' . ')

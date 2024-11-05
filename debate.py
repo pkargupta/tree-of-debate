@@ -1,5 +1,6 @@
 from persona import PaperAuthor
 from typing import List
+from collections import defaultdict
 
 class DebateNode:
     def __init__(self, round_topic, parent=None) -> None:
@@ -23,7 +24,7 @@ class DebateNode:
 
             # develop k arguments
             if paper_author.id not in self.arguments.keys(): self.arguments[paper_author.id] = []
-            self.arguments[paper_author.id].append(paper_author.generate_arguments(topic, evidence))
+            self.arguments[paper_author.id].append(paper_author.generate_arguments(topic, evidence,k=2))
 
             # check if paper is the focus
             if paper_author.focus:
@@ -51,31 +52,38 @@ class DebateNode:
 
         # TODO: f_evidence includes ALL of the retrieved segments relevant to ALL of the 
         
-        conversation_history = []
+        conversation = defaultdict()
         # add moderator response
-
+        conversation['f_evidence'] = f_evidence
+        conversation['c_claim'] = c_claim
         # each paper presents their arguments
-        focus_arg = focus_paper.present_argument(self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
-        conversation_history.append(f"Focus Paper: {focus_arg}")
+        focus_arg = focus_paper.present_argument(self.round_topic, f_claim, f_evidence, c_claim, c_evidence, k=3,author_type='focus paper')
+        conversation['focus_arg'] = focus_arg
 
-        cited_arg = cited_paper.present_argument(self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
-        conversation_history.append(f"Cited Paper: {cited_arg}")
+        cited_arg = cited_paper.present_argument(self.round_topic, f_claim, f_evidence, c_claim, c_evidence, k=3, author_type='opposition paper')
+        conversation['cited_arg'] = cited_arg
+        # history = focus_arg.extend(cited_arg)
 
         # each paper responds to opposing side's arguments
-        focus_response = focus_paper.respond_to_argument(conversation_history, self.round_topic, f_evidence, c_claim, c_evidence)
-        conversation_history.append(f"Focus Paper: {focus_response}")
+        focus_response = focus_paper.respond_to_argument(conversation, author_type='focus paper')#self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
+        # history.extend(focus_response)
+        conversation['focus_response'] = focus_response
 
-        cited_response = cited_paper.respond_to_argument(conversation_history, self.round_topic, f_evidence, c_claim, c_evidence)
-        conversation_history.append(f"Cited Paper: {cited_response}")
-
+        cited_response = cited_paper.respond_to_argument(conversation, author_type='opposition paper')#self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
+        # history.extend(focus_response)
+        conversation['cited_response'] = cited_response
+        # history.extend(cited_response)
+        
         # each paper revises their arguments
-        new_focus_arg = focus_paper.revise_argument(conversation_history, self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
-        conversation_history.append(f"Focus Paper: {new_focus_arg}")
+        new_focus_arg = focus_paper.revise_argument(conversation, author_type='focus paper')#, self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
+        conversation['new_focus_arg'] = new_focus_arg
 
-        new_cited_arg = cited_paper.revise_argument(conversation_history, self.round_topic, f_claim, f_evidence, c_claim, c_evidence)            
-        conversation_history.append(f"Cited Paper: {new_cited_arg}")
+        new_cited_arg = cited_paper.revise_argument(conversation, author_type='opposition paper')#, self.round_topic, f_claim, f_evidence, c_claim, c_evidence)            
+        conversation['new_cited_arg'] = new_cited_arg
+        # history.extend(new_focus_arg)
+        # history.extend(new_cited_arg)
 
-        return conversation_history, new_focus_arg, new_cited_arg
+        return conversation, new_focus_arg, new_cited_arg
     
     def expand_node(self, parent_node, new_node):
         parent_node.children.append(new_node)

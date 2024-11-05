@@ -1,8 +1,24 @@
 from paper_details import Paper
+from vllm import SamplingParams
+from outlines.serve.vllm import JSONLogitsProcessor
+
+from pydantic import BaseModel, conset, StringConstraints, Field, conlist
+from typing_extensions import Annotated
+
+
+class argument_schema(BaseModel):
+    title: Annotated[str, StringConstraints(strip_whitespace=True)]
+    description: Annotated[str, StringConstraints(strip_whitespace=True)]
+    evidence: conset(str, min_length=1, max_length=10)
+
+
+class argument_list_schema(BaseModel):
+    argument_list : conlist(argument_schema, min_length=1,max_length=10)
+
 
 class PaperAuthor:
-    def __init__(self, model_id, id, paper: Paper, focus):
-        self.model = None # define model - Llama 3.1
+    def __init__(self, model, id, paper: Paper, focus):
+        self.model = model # define model - Llama 3.1
         self.paper = paper
         self.focus = focus
         self.id = id
@@ -20,7 +36,24 @@ class PaperAuthor:
         If the paper is a focus paper, and the debate round is round #1, the topic should be "I am great".
         If the paper is NOT a focus paper, the topic should be the focus paper's arguments.
         """
-        return "much arguments"
+        logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+
+    
+        prompt = "You are a helpful assistant. You are an author of a a paper debating about your paper with someone else."
+        prompt += f"""Given list of evidences {evidence}. Give me list of {k} arguments about {topic}. Format the output as a schema: {{"argument_list":
+                                                [
+                                                    {{
+                                                        "title": single sentence high level argument title,
+                                                        "evidence": list of 1-10 evidences unique to that specific argument,
+                                                        "description": 2-5 sentences explaining the argument
+                                                    }}
+                                                ]
+                                            }}"""
+        outputs = self.model.generate(prompt,
+                    sampling_params=sampling_params)
+        print(outputs[0].outputs[0].text)
+        return outputs[0].outputs[0].text
 
     def preempt_arguments(self, counter_claims, counter_evidence):
         """
@@ -40,31 +73,92 @@ class PaperAuthor:
 
         return extended_pool
     
-    def present_argument(self, round_topic, f_claim, f_evidence, counter_claim, counter_evidence):
+    def present_argument(self, round_topic, f_claim, f_evidence, counter_claim, counter_evidence,k,author_type):
         """
         Generate an argument based on your claims and evidences and other paper's claims and evidences.
         """
-        return "much argument presentation"
+        logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+      
+        prompt = f"You are a helpful assistant. You are an author of a {author_type}."
+        prompt+=f"""In this step you have your claims and evidences along with the claims and evidences of the opposition paper. Your claims: {f_claim}. Your evidences: {f_evidence}. Opposition claims: {counter_claim} Counter evidence {counter_evidence}. Given the list of yours and the oppositions claims and evidences, refine your claims about {round_topic} and present {k} arguments. Format the output as a schema: {{"argument_list":
+                                                [
+                                                    {{
+                                                        "title": single sentence high level argument title,
+                                                        "evidence": list of 1-10 evidences unique to that specific argument,
+                                                        "description": 2-5 sentences explaining the argument
+                                                    }}
+                                                ]
+                                            }}"""
+        outputs = self.model.generate(prompt,
+                    sampling_params=sampling_params,
+                    use_tqdm=False)
+        print(outputs[0].outputs[0].text)
+        return outputs[0].outputs[0].text
         # prompt = ""
         # argument = self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
         # # parse argument
 
         # return argument
 
-    def respond_to_argument(self, other_argument, claim, evidence, counter_claim, counter_evidence):
+    def respond_to_argument(self, history, author_type):#round_topic, claim, evidence, counter_claim, counter_evidence):
         """
         Respond to the paper given the current state of debate.
         """
-
-        augmented_topic = "" # TODO: SHIVAM (write a prompt, write the output json format)
-        argument = self.generate_arguments(augmented_topic, evidence)
-        return argument
+        k=3
+        # augmented_topic = "" # TODO: SHIVAM (write a prompt, write the output json format)
+        # argument = self.generate_arguments(augmented_topic, evidence)
+        logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+        
+        if author_type=="focus paper":
+            
+            prompt = f"""Your claims: {history['focus_arg']}, Your evidences: {history['f_evidence']}. Opposition claims: {history['cited_arg']}. Oppositions evidence: {history['c_claim']}."""
+        else:
+            prompt = f"""Your claims: {history['cited_arg']}, Your evidences: {history['c_claim']}. Opposition claims: {history['focus_arg']}. Oppositions evidence: {history['f_evidence']}."""
+        prompt = prompt + f"""In this step you must respond to claims of the opposition given your claims and evidences along with the claims and evidences of the opposition paper. Format the output as a schema: {{"argument_list":
+                                                [
+                                                    {{
+                                                        "title": single sentence high level argument title,
+                                                        "evidence": list of 1-10 evidences unique to that specific argument,
+                                                        "description": 2-5 sentences explaining the argument
+                                                    }}
+                                                ]
+                                            }}"""
+        # conversation = history.extend(conversation)
+        outputs = self.model.generate(prompt,
+                    sampling_params=sampling_params,
+                    use_tqdm=False)
+        print(outputs[0].outputs[0].text)
+        return outputs[0].outputs[0].text
     
-    def revise_argument(self, self_argument, other_argument, claim, evidence, counter_claim, counter_evidence):
+    def revise_argument(self, history,author_type):
         """
         Strengthen the final argument at the debate node for a paper.
         """
-
-        # debate_template = ""
-        # self.model.generate(debate_template) # TODO: SHIVAM (write a prompt, write the output json format)
-        return "much argument revision"
+        k=3
+        # augmented_topic = "" # TODO: SHIVAM (write a prompt, write the output json format)
+        # argument = self.generate_arguments(augmented_topic, evidence)
+        logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+       
+        if author_type=="focus paper":
+            
+            prompt = f"""Your claims: {history['focus_arg']}, Your evidences: {history['f_evidence']}, Your response: {history['focus_response']}. Opposition claims: {history['cited_arg']}. Oppositions evidence: {history['c_claim']}. Opposition response: {history['cited_response']}"""
+        else:
+            prompt = f"""Your claims: {history['cited_arg']}, Your evidences: {history['c_claim']}. Your responses: {history['cited_response']}. Opposition claims: {history['focus_arg']}. Oppositions evidence: {history['f_evidence']}. Opposition response: {history['cited_response']}"""
+        prompt = prompt  + f"""In this step you must strengthen your claims given the reponses of the opposition. Format the output as a schema: {{"argument_list":
+                                                [
+                                                    {{
+                                                        "title": single sentence high level argument title,
+                                                        "evidence": list of 1-10 evidences unique to that specific argument,
+                                                        "description": 2-5 sentences explaining the argument
+                                                    }}
+                                                ]
+                                            }}"""
+        # conversation = history.extend(conversation)
+        outputs = self.model.generate(prompt,
+                    sampling_params=sampling_params,
+                    use_tqdm=False)
+        print(outputs[0].outputs[0].text)
+        return outputs[0].outputs[0].text
