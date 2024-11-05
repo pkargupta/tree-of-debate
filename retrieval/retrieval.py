@@ -26,11 +26,10 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
         return 0.0
     return np.dot(vec1, vec2) / (norm1 * norm2)
 
-def find_top_k(query: str, corpus: List[str], k: int = 10) -> List[Tuple[str, float]]:
+def find_top_k(query: str, corpus_emb: Dict[str, np.ndarray], k: int = 10) -> List[Tuple[str, float]]:
     """Find top-k similar chunks in a corpus to the query."""
     query_emb = e5_embed([query])[query]
     similarities = []
-    corpus_emb = embed_texts(corpus)
     for chunk, emb in corpus_emb.items():
         sim = cosine_similarity(query_emb, emb)
         similarities.append((chunk, sim))
@@ -39,11 +38,9 @@ def find_top_k(query: str, corpus: List[str], k: int = 10) -> List[Tuple[str, fl
 
 def main():
     corpus_paths = {
-        # "C99 Segmentation": "chunking/chunks/c99_segmentation.json",
-        # "Spacy Semantic": "chunking/chunks/semantic_sentences_spacy_10.json",
-        "Small Spacy Semantic": "chunking/chunks/fixed_sentence_spacy_5.json"
+        # "C99 Segmentation": "chunking/chunks/c99_segmentation.json"
     }
-    query = "Which COVID-19 vaccine is better, Pfizer or Moderna?"
+    query = ""
 
     for name, path in corpus_paths.items():
         print(f"\nProcessing Corpus: {name}")

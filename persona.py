@@ -11,7 +11,8 @@ class PaperAuthor:
         """
         Use paper chunks to get relevant segments to the topic.
         """
-        return "much evidence"
+
+        return self.paper.retrieve_top_k(topic)
 
     def generate_arguments(self, topic, evidence=False, k=2):
         """
@@ -28,9 +29,16 @@ class PaperAuthor:
         # generate template to combine counter_claims, counter_evidence
         #   Does my paper also include or address a similar claim/idea?
         #   Does my paper propose a better claim/idea to address the problem solved by p_i's claim?
+        extended_pool = {}
 
-        augmented_topic = ""# TODO: jonks <3
-        return self.gather_evidence(augmented_topic)
+        for c, e in zip(counter_claims, counter_evidence):
+            augmented_topic = f'Does my paper also include or address {c}?'
+            extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
+
+            augmented_topic = f'Does my paper propose a better claim/idea than "{c}"?'
+            extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
+
+        return extended_pool
     
     def present_argument(self, round_topic, f_claim, f_evidence, counter_claim, counter_evidence):
         """
