@@ -20,16 +20,17 @@ class E5:
     def __init__(self):
         
         # Select the most available GPU
-        available_gpus = GPUtil.getAvailable(order="memory", limit=1, maxMemory=0.8)
-        if available_gpus:
-            self.device = torch.device(f"cuda:{available_gpus[0]}")
-            print(f"E5Embedder using GPU: cuda:{available_gpus[0]}")
-        else:
-            self.device = torch.device("cpu")
-            print("No GPU available, E5Embedder using CPU.")
+        # available_gpus = GPUtil.getAvailable(order="memory", limit=1, maxMemory=0.8)
+        # if available_gpus:
+        #     self.device = torch.device(f"cuda:{available_gpus[0]}")
+        #     print(f"E5Embedder using GPU: cuda:{available_gpus[0]}")
+        # else:
+        #     self.device = torch.device("cpu")
+        #     print("No GPU available, E5Embedder using CPU.")
         
         self.tokenizer = AutoTokenizer.from_pretrained('intfloat/e5-large-v2')
-        self.model = AutoModel.from_pretrained('intfloat/e5-large-v2').to(self.device)
+        self.model = AutoModel.from_pretrained('intfloat/e5-large-v2',device='auto')#.to(self.device)
+        self.device = 'cuda'
         self.model.eval()
 
     @staticmethod

@@ -93,7 +93,7 @@ class PaperAuthor:
         outputs = self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)
-        print(outputs[0].outputs[0].text)
+        print(f'PRESENTING ARGUMENTS {outputs[0].outputs[0].text}')
         return outputs[0].outputs[0].text
         # prompt = ""
         # argument = self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
@@ -129,7 +129,7 @@ class PaperAuthor:
         outputs = self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)
-        print(outputs[0].outputs[0].text)
+        print(f'RESPONDING TO ARGUMENTS{outputs[0].outputs[0].text}')
         return outputs[0].outputs[0].text
     
     def revise_argument(self, history,author_type):
@@ -160,5 +160,6 @@ class PaperAuthor:
         outputs = self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)
-        print(outputs[0].outputs[0].text)
+        print(f'REVISING ARGUMENTS {outputs[0].outputs[0].text}')
+
         return outputs[0].outputs[0].text
