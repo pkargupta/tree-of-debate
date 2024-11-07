@@ -1,9 +1,7 @@
 import re
 import tqdm
-import GPUtil
 import torch
 import warnings
-import joblib
 import torch.nn.functional as F
 
 from math import ceil
@@ -28,8 +26,10 @@ class E5:
         #     self.device = torch.device("cpu")
         #     print("No GPU available, E5Embedder using CPU.")
         
-        self.tokenizer = AutoTokenizer.from_pretrained('intfloat/e5-large-v2')
-        self.model = AutoModel.from_pretrained('intfloat/e5-large-v2',device='auto')#.to(self.device)
+        # self.tokenizer = AutoTokenizer.from_pretrained('intfloat/e5-large-v2')
+        self.tokenizer = AutoTokenizer.from_pretrained('allenai/specter2_base')
+        # self.model = AutoModel.from_pretrained('intfloat/e5-large-v2').to('cuda')
+        self.model = AutoModel.from_pretrained('allenai/specter2_base').to('cuda')
         self.device = 'cuda'
         self.model.eval()
 

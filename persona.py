@@ -1,7 +1,7 @@
 from paper_details import Paper
 from vllm import SamplingParams
 from outlines.serve.vllm import JSONLogitsProcessor
-
+from unidecode import unidecode
 from pydantic import BaseModel, conset, StringConstraints, Field, conlist
 from typing_extensions import Annotated
 
@@ -23,12 +23,19 @@ class PaperAuthor:
         self.focus = focus
         self.id = id
 
-    def gather_evidence(self, topic):
+    def gather_evidence(self, topic, return_scores=True):
         """
         Use paper chunks to get relevant segments to the topic.
         """
 
-        return self.paper.retrieve_top_k(topic)
+        retrievals = self.paper.retrieve_top_k(topic)
+        evidence, scores = [], []
+        for retrieval in retrievals:
+            evidence.append(retrieval[0])
+            scores.append(retrieval[1])
+        if return_scores:
+            return evidence, scores
+        return evidence
 
     def generate_arguments(self, topic, evidence=False, k=2):
         """
@@ -41,19 +48,19 @@ class PaperAuthor:
 
     
         prompt = "You are a helpful assistant. You are an author of a a paper debating about your paper with someone else."
-        prompt += f"""Given list of evidences {evidence}. Give me list of {k} arguments about {topic}. Format the output as a schema: {{"argument_list":
+        prompt += f"""Below is a list of evidence:\n {evidence}\nOutput a list of {k} arguments about the topic: {topic}. Format the output as a schema: {{"argument_list":
                                                 [
                                                     {{
-                                                        "title": single sentence high level argument title,
-                                                        "evidence": list of 1-10 evidences unique to that specific argument,
-                                                        "description": 2-5 sentences explaining the argument
+                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
+                                                        "evidence": <a list of 1-10 segments from the input list of evidence that supports your argument>,
+                                                        "description": <2-5 sentences explaining the argument>
                                                     }}
                                                 ]
                                             }}"""
         outputs = self.model.generate(prompt,
                     sampling_params=sampling_params)
         print(outputs[0].outputs[0].text)
-        return outputs[0].outputs[0].text
+        return unidecode(outputs[0].outputs[0].text)
 
     def preempt_arguments(self, counter_claims, counter_evidence):
         """
@@ -94,7 +101,7 @@ class PaperAuthor:
                     sampling_params=sampling_params,
                     use_tqdm=False)
         print(f'PRESENTING ARGUMENTS {outputs[0].outputs[0].text}')
-        return outputs[0].outputs[0].text
+        return unidecode(outputs[0].outputs[0].text)
         # prompt = ""
         # argument = self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
         # # parse argument
@@ -130,7 +137,7 @@ class PaperAuthor:
                     sampling_params=sampling_params,
                     use_tqdm=False)
         print(f'RESPONDING TO ARGUMENTS{outputs[0].outputs[0].text}')
-        return outputs[0].outputs[0].text
+        return unidecode(outputs[0].outputs[0].text)
     
     def revise_argument(self, history,author_type):
         """
@@ -162,4 +169,4 @@ class PaperAuthor:
                     use_tqdm=False)
         print(f'REVISING ARGUMENTS {outputs[0].outputs[0].text}')
 
-        return outputs[0].outputs[0].text
+        return unidecode(outputs[0].outputs[0].text)

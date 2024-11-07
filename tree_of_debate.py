@@ -1,14 +1,18 @@
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = "2,3"
 from debate import DebateNode
 from paper_details import Paper
 from persona import PaperAuthor
 from moderator import Moderator
+import argparse
 from typing import List
 from vllm import LLM
+import os
 import json
+from data_pairer import parse_papers
+import numpy as np
 
-
-
-def run_code(f_pap, c_pap):
+def run_code(args, f_pap, c_pap):
 
     focus_paper = PaperAuthor(
     model = model_server,
@@ -27,11 +31,15 @@ def run_code(f_pap, c_pap):
     moderator = Moderator(model_server)
 
     paper_authors = [focus_paper, cited_paper]
-    leaf_node_label = "tree of thought"
+    leaf_node_label = args.topic
+
+    if args.log_dir != "":
+        with open(os.path.join(args.log_dir, 'self_deliberation.txt'), 'w') as f:
+            f.write(f'Topic: {args.topic}\n\n')
 
     # each node has a topic
     root_node = DebateNode(leaf_node_label)
-    subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors) # k new, finer topics to discuss
+    subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors, log=args.log_dir) # k new, finer topics to discuss
 
     """
     TI and knowledge tracing
@@ -66,12 +74,24 @@ def run_code(f_pap, c_pap):
 
 
 
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--focus_paper", default="https://arxiv.org/pdf/1706.03762")
+    parser.add_argument("--cited_paper", default="https://arxiv.org/pdf/1810.04805")
+    parser.add_argument("--topic", default="")
+    parser.add_argument("--log_dir", default="logs")
+    args = parser.parse_args()
 
-with open('data.json', 'r') as file:
-    data = json.load(file)
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
 
-model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,gpu_memory_utilization=0.95,enable_prefix_caching=True)
+    # if not os.path.exists("data.json"):
+    parse_papers(args.focus_paper, args.cited_paper)
+    with open('data.json', 'r') as file:
+        data = json.load(file)
 
-for item in data:
-    run_code(item['focus'],item['cited'])
+    model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,gpu_memory_utilization=0.5,max_num_seqs=100) #,enable_prefix_caching=True)
+
+    for item in data:
+        run_code(args, item['focus'], item['cited'])
 

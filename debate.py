@@ -1,6 +1,8 @@
 from persona import PaperAuthor
 from typing import List
 from collections import defaultdict
+from unidecode import unidecode
+import os
 
 class DebateNode:
     def __init__(self, round_topic, parent=None) -> None:
@@ -14,21 +16,34 @@ class DebateNode:
         self.parent = parent
         self.round_topic = round_topic
 
-    def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor]):
+    def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor], log=None):
         focus_paper = None
         for paper_author in paper_authors:
             # gather evidence
-            evidence = paper_author.gather_evidence(topic)
+            evidence, scores = paper_author.gather_evidence(topic, return_scores=True)
+
             if paper_author.id not in self.evidence.keys(): self.evidence[paper_author.id] = []
             self.evidence[paper_author.id].append(evidence)
 
             # develop k arguments
             if paper_author.id not in self.arguments.keys(): self.arguments[paper_author.id] = []
-            self.arguments[paper_author.id].append(paper_author.generate_arguments(topic, evidence,k=2))
+            author_args = paper_author.generate_arguments(topic, evidence,k=2)
+            self.arguments[paper_author.id].append(author_args)
 
             # check if paper is the focus
             if paper_author.focus:
                 focus_paper = paper_author
+
+            # logging
+            if log is not None:
+                with open(os.path.join(log, 'self_deliberation.txt'), 'a') as f:
+                    f.write(f'Topic: {topic}\n\n')
+                    f.write(f'Gather Evidence:\n\n')
+                    temp = "\n".join([f'{s} - {e}' for s, e in zip(scores, evidence)])
+                    f.write(f'{paper_author.focus} paper:\n{temp}\n\n')
+
+                    f.write(f'Develop Arguments:\n\n')
+                    f.write(f'{paper_author.focus} paper:\n{unidecode(author_args)}\n\n')
         
         # preemption
         for i in range(len(paper_authors)):
@@ -36,6 +51,13 @@ class DebateNode:
             other_evidence = [self.evidence[paper_authors[j].id] for j in range(len(paper_authors)) if j != i]
 
             preemption = paper_authors[i].preempt_arguments(other_arguments, other_evidence)
+            
+            # logging
+            if log is not None:
+                with open(os.path.join(log, 'self_deliberation.txt'), 'a') as f:
+                    f.write(f'Preemption:\n\n')
+                    f.write(f'{paper_author.focus} paper:\n{preemption}\n\n')
+
             self.evidence[paper_authors[i].id].append(preemption)         
 
         for child_topic in self.arguments[focus_paper.id]:
