@@ -1,2 +1,6 @@
 *.json
 *.txt
+.cache/*
+*.pkl
+__pycache__/*
+*pyc
