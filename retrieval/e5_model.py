@@ -114,7 +114,7 @@ class E5:
             torch.cuda.empty_cache()
         return ret
 
-@memory.cache
+# @memory.cache
 def e5_embed(text_list: list[str]):
     e5 = E5()
     res = e5(text_list)

@@ -4,6 +4,7 @@ from outlines.serve.vllm import JSONLogitsProcessor
 from unidecode import unidecode
 from pydantic import BaseModel, conset, StringConstraints, Field, conlist
 from typing_extensions import Annotated
+import json
 
 
 class argument_schema(BaseModel):
@@ -46,7 +47,7 @@ class PaperAuthor:
         logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
-    
+        # TODO: distinct prompts between focus and cited papers
         prompt = "You are a helpful assistant. You are an author of a a paper debating about your paper with someone else."
         prompt += f"""Below is a list of evidence:\n {evidence}\nOutput a list of {k} arguments about the topic: {topic}. Format the output as a schema: {{"argument_list":
                                                 [
@@ -60,7 +61,7 @@ class PaperAuthor:
         outputs = self.model.generate(prompt,
                     sampling_params=sampling_params)
         print(outputs[0].outputs[0].text)
-        return unidecode(outputs[0].outputs[0].text)
+        return json.loads(unidecode(outputs[0].outputs[0].text))
 
     def preempt_arguments(self, counter_claims, counter_evidence):
         """
@@ -101,7 +102,7 @@ class PaperAuthor:
                     sampling_params=sampling_params,
                     use_tqdm=False)
         print(f'PRESENTING ARGUMENTS {outputs[0].outputs[0].text}')
-        return unidecode(outputs[0].outputs[0].text)
+        return json.loads(unidecode(outputs[0].outputs[0].text))
         # prompt = ""
         # argument = self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
         # # parse argument
@@ -137,7 +138,7 @@ class PaperAuthor:
                     sampling_params=sampling_params,
                     use_tqdm=False)
         print(f'RESPONDING TO ARGUMENTS{outputs[0].outputs[0].text}')
-        return unidecode(outputs[0].outputs[0].text)
+        return json.loads(unidecode(outputs[0].outputs[0].text))
     
     def revise_argument(self, history,author_type):
         """
@@ -169,4 +170,4 @@ class PaperAuthor:
                     use_tqdm=False)
         print(f'REVISING ARGUMENTS {outputs[0].outputs[0].text}')
 
-        return unidecode(outputs[0].outputs[0].text)
+        return json.loads(unidecode(outputs[0].outputs[0].text))
