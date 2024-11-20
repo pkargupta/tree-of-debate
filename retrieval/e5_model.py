@@ -115,10 +115,38 @@ class E5:
         return ret
 
 # @memory.cache
-def e5_embed(text_list: list[str]):
-    e5 = E5()
-    res = e5(text_list)
-    return res
+def e5_embed(text_list: list[str], batch_size=64):
+    # e5 = E5()
+    # res = e5(text_list)
+    # return res
+
+    embedding_model_name = 'BAAI/bge-large-en-v1.5'
+    embedding_tokenizer = AutoTokenizer.from_pretrained(embedding_model_name)
+    embedding_tokenizer.max_subtokens_sequence_length = 512
+    embedding_tokenizer.model_max_length = 512
+    embedding_model = AutoModel.from_pretrained(embedding_model_name)
+    embedding_model.eval()
+
+    if embedding_tokenizer.pad_token is None:
+        embedding_tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        embedding_model.resize_token_embeddings(len(embedding_tokenizer))
+    
+    sentence_embeddings = []
+    for i in tqdm(range(0, len(text_list), batch_size)):
+        encoded_input = embedding_tokenizer(text_list[i:i+batch_size], padding=True, truncation=True, return_tensors='pt').to(embedding_model.device)
+        with torch.no_grad():
+            model_output = embedding_model(**encoded_input)
+            sentence_embedding = model_output[0][:, 0]
+        sentence_embedding = torch.nn.functional.normalize(sentence_embedding, p=2, dim=1).squeeze()
+        if len(sentence_embedding.shape) == 1:
+            sentence_embedding = [sentence_embedding]
+        sentence_embeddings.extend(sentence_embedding)
+    
+
+    embeddings_dicts = {}
+    for sentence, embedding in zip(text_list, sentence_embeddings):
+        embeddings_dicts[sentence] = embedding
+    return embeddings_dicts
 
 if __name__ == "__main__":
     texts = ["Hello", "World", "Python"]

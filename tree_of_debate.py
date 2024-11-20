@@ -78,7 +78,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--focus_paper", default="https://arxiv.org/pdf/1706.03762")
     parser.add_argument("--cited_paper", default="https://arxiv.org/pdf/1810.04805")
-    parser.add_argument("--topic", default="")
+    parser.add_argument("--topic", default="language model architectures")
     parser.add_argument("--log_dir", default="logs")
     args = parser.parse_args()
 

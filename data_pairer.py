@@ -19,7 +19,6 @@ def extract_text(pdf_url):
     raw_extracted_text = arxiv_to_text(pdf_url).strip()
     raw_extracted_text = unidecode(raw_extracted_text)
 
-    # import pdb; pdb.set_trace()
     printable = set(string.printable)
     raw_extracted_text = ''.join(filter(lambda x: x in printable, raw_extracted_text)).replace('\r', '')
     raw_extracted_text = re.sub(r'\/uni\w{4,8}', "", raw_extracted_text)
@@ -40,8 +39,10 @@ def extract_text(pdf_url):
                 extracted_text.append(text)
                 
 
-    extracted_text = " ".join(extracted_text).replace('\n', ' ')
-    return extracted_text[:extracted_text.find("References")]
+    extracted_text = " ".join(extracted_text).replace('\n', ' ') # remove new lines
+    extracted_text = extracted_text.replace("- ", "") # remove justified text errors that result in half words ("arbi-\ntrary")
+    extracted_text = " ".join(extracted_text.split()) # remove unnecessary whitespace in between
+    return extracted_text[:extracted_text.find("References")] # only take the text before the references section
 
 def parse_papers(focus_url, cited_url):
     focus = extract_text(focus_url)

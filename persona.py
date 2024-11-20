@@ -29,7 +29,7 @@ class PaperAuthor:
         Use paper chunks to get relevant segments to the topic.
         """
 
-        retrievals = self.paper.retrieve_top_k(topic)
+        retrievals = self.paper.retrieve_top_k(topic, k=2)
         evidence, scores = [], []
         for retrieval in retrievals:
             evidence.append(retrieval[0])

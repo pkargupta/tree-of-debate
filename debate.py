@@ -43,7 +43,10 @@ class DebateNode:
                     f.write(f'{paper_author.focus} paper:\n{temp}\n\n')
 
                     f.write(f'Develop Arguments:\n\n')
-                    f.write(f'{paper_author.focus} paper:\n{unidecode(author_args)}\n\n')
+                    temp = ""
+                    for i, arg in enumerate(author_args['argument_list']):
+                        temp += f"Argument #{i+1} - {arg['title']}.\n\t{arg['description']}\n"
+                    f.write(f'{paper_author.focus} paper:\n{temp}\n\n')
         
         # preemption
         for i in range(len(paper_authors)):
