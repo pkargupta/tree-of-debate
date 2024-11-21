@@ -24,12 +24,12 @@ class PaperAuthor:
         self.focus = focus
         self.id = id
 
-    def gather_evidence(self, topic, return_scores=True):
+    def gather_evidence(self, topic, k=2, return_scores=True):
         """
         Use paper chunks to get relevant segments to the topic.
         """
 
-        retrievals = self.paper.retrieve_top_k(topic, k=2)
+        retrievals = self.paper.retrieve_top_k(topic, k=k)
         evidence, scores = [], []
         for retrieval in retrievals:
             evidence.append(retrieval[0])

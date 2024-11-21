@@ -8,6 +8,7 @@ from math import ceil
 from tqdm import tqdm
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
+from typing import List
 
 from joblib import Memory
 memory = Memory(location=".cache", verbose=0)
@@ -115,7 +116,7 @@ class E5:
         return ret
 
 # @memory.cache
-def e5_embed(text_list: list[str], batch_size=64):
+def e5_embed(text_list: List[str], batch_size=64):
     # e5 = E5()
     # res = e5(text_list)
     # return res

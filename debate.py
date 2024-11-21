@@ -20,7 +20,7 @@ class DebateNode:
         focus_paper = None
         for paper_author in paper_authors:
             # gather evidence
-            evidence, scores = paper_author.gather_evidence(topic, return_scores=True)
+            evidence, scores = paper_author.gather_evidence(topic, k=5, return_scores=True)
 
             if paper_author.id not in self.evidence.keys(): self.evidence[paper_author.id] = []
             self.evidence[paper_author.id].append(evidence)
