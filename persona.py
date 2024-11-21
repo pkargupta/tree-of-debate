@@ -73,10 +73,10 @@ class PaperAuthor:
         extended_pool = {}
 
         for c, e in zip(counter_claims, counter_evidence):
-            augmented_topic = f'Does my paper also include or address {c}?'
+            augmented_topic = f'Does my paper also include or address the claim \"{c}\"?'
             extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
 
-            augmented_topic = f'Does my paper propose a better claim/idea than "{c}"?'
+            augmented_topic = f'Does my paper propose a better claim/idea than the claim \"{c}\"?'
             extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
 
         return extended_pool
