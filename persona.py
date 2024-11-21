@@ -10,12 +10,17 @@ import json
 class argument_schema(BaseModel):
     title: Annotated[str, StringConstraints(strip_whitespace=True)]
     description: Annotated[str, StringConstraints(strip_whitespace=True)]
-    evidence: conset(str, min_length=1, max_length=10)
 
 
 class argument_list_schema(BaseModel):
     argument_list : conlist(argument_schema, min_length=1,max_length=10)
 
+def log_llm(prompt, output):
+    with open('logs/llm_calls.txt', 'a+') as f:
+        f.write('--------------------------------------------\n')
+        f.write(f'PROMPT: {prompt}\n')
+        f.write(f'OUTPUT: {output}\n')
+        f.write('--------------------------------------------\n\n')
 
 class PaperAuthor:
     def __init__(self, model, id, paper: Paper, focus):
@@ -48,20 +53,19 @@ class PaperAuthor:
         sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
         # TODO: distinct prompts between focus and cited papers
-        prompt = "You are a helpful assistant. You are an author of a a paper debating about your paper with someone else."
-        prompt += f"""Below is a list of evidence:\n {evidence}\nOutput a list of {k} arguments about the topic: {topic}. Format the output as a schema: {{"argument_list":
+        prompt = f"You are a helpful assistant. You are an author of a paper that is trying to convince others of your paper's contributions towards {topic}."
+        prompt += f"""Below is a list of evidence:\n {evidence}\nBased on the evidence, output a list of {k} arguments on your paper's major contributions towards {topic}, that are all supported by the evidence. Format the output as a schema: {{"argument_list":
                                                 [
                                                     {{
                                                         "title": <should be a sentence-long string where the value is the high-level argument title>,
-                                                        "evidence": <a list of 1-10 segments from the input list of evidence that supports your argument>,
-                                                        "description": <2-5 sentences explaining the argument>
+                                                        "description": <2-5 sentence string explaining the argument>
                                                     }}
                                                 ]
                                             }}"""
-        outputs = self.model.generate(prompt,
-                    sampling_params=sampling_params)
-        print(outputs[0].outputs[0].text)
-        return json.loads(unidecode(outputs[0].outputs[0].text))
+        outputs = unidecode(self.model.generate(prompt,
+                    sampling_params=sampling_params)[0].outputs[0].text)
+        log_llm(prompt, outputs)
+        return json.loads(outputs)
 
     def preempt_arguments(self, counter_claims, counter_evidence):
         """
@@ -76,8 +80,8 @@ class PaperAuthor:
             augmented_topic = f'Does my paper also include or address the claim \"{c}\"?'
             extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
 
-            augmented_topic = f'Does my paper propose a better claim/idea than the claim \"{c}\"?'
-            extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
+            # augmented_topic = f'Does my paper propose a better claim/idea than the claim \"{c}\"?'
+            # extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
 
         return extended_pool
     
@@ -92,19 +96,19 @@ class PaperAuthor:
         prompt+=f"""In this step you have your claims and evidences along with the claims and evidences of the opposition paper. Your claims: {f_claim}. Your evidences: {f_evidence}. Opposition claims: {counter_claim} Counter evidence {counter_evidence}. Given the list of yours and the oppositions claims and evidences, refine your claims about {round_topic} and present {k} arguments. Format the output as a schema: {{"argument_list":
                                                 [
                                                     {{
-                                                        "title": single sentence high level argument title,
-                                                        "evidence": list of 1-10 evidences unique to that specific argument,
-                                                        "description": 2-5 sentences explaining the argument
+                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
+                                                        "description": <2-5 sentence string explaining the argument>
                                                     }}
                                                 ]
                                             }}"""
-        outputs = self.model.generate(prompt,
+        outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
-                    use_tqdm=False)
-        print(f'PRESENTING ARGUMENTS {outputs[0].outputs[0].text}')
-        return json.loads(unidecode(outputs[0].outputs[0].text))
+                    use_tqdm=False)[0].outputs[0].text)
+        print(f'PRESENTING ARGUMENTS {outputs}')
+        log_llm(prompt, outputs)
+        return json.loads((outputs))
         # prompt = ""
-        # argument = self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
+        # argument = unidecode(self.model.generate() # TODO: SHIVAM (write a prompt, write the output json format)
         # # parse argument
 
         # return argument
@@ -127,18 +131,18 @@ class PaperAuthor:
         prompt = prompt + f"""In this step you must respond to claims of the opposition given your claims and evidences along with the claims and evidences of the opposition paper. Format the output as a schema: {{"argument_list":
                                                 [
                                                     {{
-                                                        "title": single sentence high level argument title,
-                                                        "evidence": list of 1-10 evidences unique to that specific argument,
-                                                        "description": 2-5 sentences explaining the argument
+                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
+                                                        "description": <2-5 sentence string explaining the argument>
                                                     }}
                                                 ]
                                             }}"""
         # conversation = history.extend(conversation)
-        outputs = self.model.generate(prompt,
+        outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
-                    use_tqdm=False)
-        print(f'RESPONDING TO ARGUMENTS{outputs[0].outputs[0].text}')
-        return json.loads(unidecode(outputs[0].outputs[0].text))
+                    use_tqdm=False)[0].outputs[0].text)
+        print(f'RESPONDING TO ARGUMENTS{outputs}')
+        log_llm(prompt, outputs)
+        return json.loads(outputs)
     
     def revise_argument(self, history,author_type):
         """
@@ -158,16 +162,15 @@ class PaperAuthor:
         prompt = prompt  + f"""In this step you must strengthen your claims given the reponses of the opposition. Format the output as a schema: {{"argument_list":
                                                 [
                                                     {{
-                                                        "title": single sentence high level argument title,
-                                                        "evidence": list of 1-10 evidences unique to that specific argument,
-                                                        "description": 2-5 sentences explaining the argument
+                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
+                                                        "description": <2-5 sentence string explaining the argument>
                                                     }}
                                                 ]
                                             }}"""
         # conversation = history.extend(conversation)
-        outputs = self.model.generate(prompt,
+        outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
-                    use_tqdm=False)
-        print(f'REVISING ARGUMENTS {outputs[0].outputs[0].text}')
-
-        return json.loads(unidecode(outputs[0].outputs[0].text))
+                    use_tqdm=False)[0].outputs[0].text)
+        print(f'REVISING ARGUMENTS {outputs}')
+        log_llm(prompt, outputs)
+        return json.loads(outputs)

@@ -11,6 +11,7 @@ import os
 import json
 from data_pairer import parse_papers
 import numpy as np
+import pickle
 
 def run_code(args, f_pap, c_pap):
 
@@ -40,6 +41,12 @@ def run_code(args, f_pap, c_pap):
     # each node has a topic
     root_node = DebateNode(leaf_node_label)
     subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors, log=args.log_dir) # k new, finer topics to discuss
+    # with open('logs/current_state.pkl', 'wb+') as f:
+    #     pickle.dump([root_node, subtrees], f)
+            
+    # with open('logs/current_state.pkl', 'rb') as f:
+    #     temp = pickle.load(f)
+    # root_node, subtrees = temp[0], temp[1]
 
     """
     TI and knowledge tracing
@@ -69,7 +76,7 @@ def run_code(args, f_pap, c_pap):
             new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors)
             queue_of_rounds.extend(new_subtrees)
 
-    with open('conversation_history.txt', 'w+') as f:
+    with open('logs/conversation_history.txt', 'w+') as f:
         f.write('\n'.join(conversation_history))
 
 

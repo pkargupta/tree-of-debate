@@ -4,6 +4,15 @@ from collections import defaultdict
 from unidecode import unidecode
 import os
 
+def collect_arguments(arguments):
+    text_args = ""
+    counter = 1
+    for args in arguments:
+        for a in args['argument_list']:
+            text_args += f"{counter}. {a['title']}. "
+    return text_args
+
+
 class DebateNode:
     def __init__(self, round_topic, parent=None) -> None:
         self.children = []
@@ -53,15 +62,28 @@ class DebateNode:
             other_arguments = [self.arguments[paper_authors[j].id] for j in range(len(paper_authors)) if j != i]
             other_evidence = [self.evidence[paper_authors[j].id] for j in range(len(paper_authors)) if j != i]
 
-            preemption = paper_authors[i].preempt_arguments(other_arguments, other_evidence)
+            # preemption = paper_authors[i].preempt_arguments(other_arguments, other_evidence)
+            preemptions = {}
+            for paper_args, paper_evids in zip(other_arguments, other_evidence):
+                for round_args, round_evids in zip(paper_args, paper_evids):
+                    args = []
+                    for a in round_args['argument_list']:
+                        args.append(a['title'])
+                    preemptions.update(paper_authors[i].preempt_arguments(args, round_evids))
             
             # logging
             if log is not None:
                 with open(os.path.join(log, 'self_deliberation.txt'), 'a') as f:
                     f.write(f'Preemption:\n\n')
-                    f.write(f'{paper_author.focus} paper:\n{preemption}\n\n')
+                    temp = ""
+                    for key in preemptions.keys():
+                        temp += f"\t{key}\n"
+                        for j, p in enumerate(preemptions[key][0]):
+                            temp += f"\t\tPreemptive Arg #{j+1}: {p}\n"
+                        temp += "\n"
+                    f.write(f'{paper_authors[i].focus} paper:\n{temp}\n\n')
 
-            self.evidence[paper_authors[i].id].append(preemption)         
+            self.evidence[paper_authors[i].id].append(preemptions)         
 
         for child_topic in self.arguments[focus_paper.id]:
             self.children.append(DebateNode(child_topic, parent=self))
@@ -82,7 +104,7 @@ class DebateNode:
         conversation['f_evidence'] = f_evidence
         conversation['c_claim'] = c_claim
         # each paper presents their arguments
-        focus_arg = focus_paper.present_argument(self.round_topic, f_claim, f_evidence, c_claim, c_evidence, k=3,author_type='focus paper')
+        focus_arg = focus_paper.present_argument(self.round_topic, collect_arguments(f_claim), f_evidence, collect_arguments(c_claim), c_evidence, k=3, author_type='focus paper')
         conversation['focus_arg'] = focus_arg
 
         cited_arg = cited_paper.present_argument(self.round_topic, f_claim, f_evidence, c_claim, c_evidence, k=3, author_type='opposition paper')
@@ -108,7 +130,11 @@ class DebateNode:
         # history.extend(new_focus_arg)
         # history.extend(new_cited_arg)
 
-        return conversation, new_focus_arg, new_cited_arg
+        conv_list = [f"Round 1: {self.round_topic}"]
+        for key in conversation.keys():
+            conv_list.append(f"\t{key}: {conversation[key]}\n")
+
+        return conv_list, new_focus_arg, new_cited_arg
     
     def expand_node(self, parent_node, new_node):
         parent_node.children.append(new_node)
