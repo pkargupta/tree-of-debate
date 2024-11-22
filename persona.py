@@ -54,20 +54,23 @@ class PaperAuthor:
 
         # TODO: distinct prompts between focus and cited papers
         prompt = f"You are a helpful assistant. You are an author of a paper that is trying to convince others of your paper's contributions towards {topic}."
-        prompt += f"""Below is a list of evidence:\n {evidence}\nBased on the evidence, output a list of {k} arguments on your paper's major contributions towards {topic}, that are all supported by the evidence. Format the output as a schema: {{"argument_list":
-                                                [
-                                                    {{
-                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
-                                                        "description": <2-5 sentence string explaining the argument>
-                                                    }}
-                                                ]
-                                            }}"""
+
+        formatted_evidence = "\n".join([f'Retrieved Evidence #{idx+1}: {e}' for idx, e in enumerate(evidence)])
+        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\nBased on the evidence, output a list of {k} arguments on your paper's major contributions towards {topic}, that are all supported by the evidence. Output your list of arguments in the following JSON format:
+{{"argument_list":
+    [
+        {{
+            "title": <should be a brief, 10-15 word string where the value is the high-level argument title>,
+            "description": <2-5 sentence string explaining the argument>
+        }}
+    ]
+}}"""
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params)[0].outputs[0].text)
         log_llm(prompt, outputs)
-        return json.loads(outputs)
+        return json.loads(outputs)['argument_list']
 
-    def preempt_arguments(self, counter_claims, counter_evidence):
+    def preempt_arguments(self, counter_claims):
         """
         gathers evidence for why self is better than paper_b wrt paper_b's arguments/evidences.
         """
@@ -76,11 +79,11 @@ class PaperAuthor:
         #   Does my paper propose a better claim/idea to address the problem solved by p_i's claim?
         extended_pool = {}
 
-        for c, e in zip(counter_claims, counter_evidence):
-            augmented_topic = f'Does my paper also include or address the claim \"{c}\"?'
-            extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
+        for c in counter_claims:
+            augmented_topic = f'Does my paper also address the claim, \"{c.lower()}\"?'
+            extended_pool[augmented_topic] = self.gather_evidence(augmented_topic, return_scores=False)
 
-            # augmented_topic = f'Does my paper propose a better claim/idea than the claim \"{c}\"?'
+            # augmented_topic = f'Does my paper propose a better claim/idea than the claim, \"{c}\"?'
             # extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
 
         return extended_pool
@@ -92,15 +95,23 @@ class PaperAuthor:
         logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
       
-        prompt = f"You are a helpful assistant. You are an author of a {author_type}."
-        prompt+=f"""In this step you have your claims and evidences along with the claims and evidences of the opposition paper. Your claims: {f_claim}. Your evidences: {f_evidence}. Opposition claims: {counter_claim} Counter evidence {counter_evidence}. Given the list of yours and the oppositions claims and evidences, refine your claims about {round_topic} and present {k} arguments. Format the output as a schema: {{"argument_list":
-                                                [
-                                                    {{
-                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
-                                                        "description": <2-5 sentence string explaining the argument>
-                                                    }}
-                                                ]
-                                            }}"""
+        prompt = f"You are an author of a {author_type}."
+        prompt+=f"""In this step, you have your claims and evidences along with the claims and evidences of the opposition paper.
+
+Your claim: {f_claim}
+Your evidences: {f_evidence}.
+
+Opposition claims: {counter_claim}
+
+Counter evidence {counter_evidence}. Given the list of yours and the oppositions claims and evidences, refine your claims about {round_topic} and present {k} arguments. Format the output as a schema:
+{{"argument_list":
+    [
+        {{
+            "title": <should be a sentence-long string where the value is the high-level argument title>,
+            "description": <2-5 sentence string explaining the argument>
+        }}
+    ]
+}}"""
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)

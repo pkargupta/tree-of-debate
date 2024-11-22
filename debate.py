@@ -25,19 +25,19 @@ class DebateNode:
         self.parent = parent
         self.round_topic = round_topic
 
-    def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor], log=None):
+    def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor], log=None, num_evidence=5, num_arg=2):
         focus_paper = None
         for paper_author in paper_authors:
             # gather evidence
-            evidence, scores = paper_author.gather_evidence(topic, k=5, return_scores=True)
+            evidence, scores = paper_author.gather_evidence(topic, k=num_evidence, return_scores=True)
 
             if paper_author.id not in self.evidence.keys(): self.evidence[paper_author.id] = []
-            self.evidence[paper_author.id].append(evidence)
+            self.evidence[paper_author.id].extend(evidence)
 
             # develop k arguments
             if paper_author.id not in self.arguments.keys(): self.arguments[paper_author.id] = []
-            author_args = paper_author.generate_arguments(topic, evidence,k=2)
-            self.arguments[paper_author.id].append(author_args)
+            author_args = paper_author.generate_arguments(topic, evidence, k=num_arg)
+            self.arguments[paper_author.id].extend(author_args)
 
             # check if paper is the focus
             if paper_author.focus:
@@ -53,37 +53,31 @@ class DebateNode:
 
                     f.write(f'Develop Arguments:\n\n')
                     temp = ""
-                    for i, arg in enumerate(author_args['argument_list']):
+                    for i, arg in enumerate(author_args):
                         temp += f"Argument #{i+1} - {arg['title']}.\n\t{arg['description']}\n"
                     f.write(f'{paper_author.focus} paper:\n{temp}\n\n')
         
         # preemption
+        ## for each other paper author, collect their respective arguments/evidence
         for i in range(len(paper_authors)):
-            other_arguments = [self.arguments[paper_authors[j].id] for j in range(len(paper_authors)) if j != i]
-            other_evidence = [self.evidence[paper_authors[j].id] for j in range(len(paper_authors)) if j != i]
+            other_arguments = []
+            for j in range(len(paper_authors)):
+                if j != i:
+                    other_arguments.extend([a['title'] for a in self.arguments[paper_authors[j].id]])
 
-            # preemption = paper_authors[i].preempt_arguments(other_arguments, other_evidence)
-            preemptions = {}
-            for paper_args, paper_evids in zip(other_arguments, other_evidence):
-                for round_args, round_evids in zip(paper_args, paper_evids):
-                    args = []
-                    for a in round_args['argument_list']:
-                        args.append(a['title'])
-                    preemptions.update(paper_authors[i].preempt_arguments(args, round_evids))
+            self.preemption.update(paper_authors[i].preempt_arguments(other_arguments))
             
             # logging
             if log is not None:
                 with open(os.path.join(log, 'self_deliberation.txt'), 'a') as f:
                     f.write(f'Preemption:\n\n')
                     temp = ""
-                    for key in preemptions.keys():
+                    for key in self.preemption.keys():
                         temp += f"\t{key}\n"
-                        for j, p in enumerate(preemptions[key][0]):
+                        for j, p in enumerate(self.preemption[key]):
                             temp += f"\t\tPreemptive Arg #{j+1}: {p}\n"
                         temp += "\n"
-                    f.write(f'{paper_authors[i].focus} paper:\n{temp}\n\n')
-
-            self.evidence[paper_authors[i].id].append(preemptions)         
+                    f.write(f'{paper_authors[i].focus} paper:\n{temp}\n\n')       
 
         for child_topic in self.arguments[focus_paper.id]:
             self.children.append(DebateNode(child_topic, parent=self))

@@ -125,7 +125,7 @@ def e5_embed(text_list: List[str], batch_size=64):
     embedding_tokenizer = AutoTokenizer.from_pretrained(embedding_model_name)
     embedding_tokenizer.max_subtokens_sequence_length = 512
     embedding_tokenizer.model_max_length = 512
-    embedding_model = AutoModel.from_pretrained(embedding_model_name)
+    embedding_model = AutoModel.from_pretrained(embedding_model_name, device_map='auto')
     embedding_model.eval()
 
     if embedding_tokenizer.pad_token is None:
@@ -138,7 +138,7 @@ def e5_embed(text_list: List[str], batch_size=64):
         with torch.no_grad():
             model_output = embedding_model(**encoded_input)
             sentence_embedding = model_output[0][:, 0]
-        sentence_embedding = torch.nn.functional.normalize(sentence_embedding, p=2, dim=1).squeeze()
+        sentence_embedding = torch.nn.functional.normalize(sentence_embedding, p=2, dim=1).squeeze().detach().cpu().numpy()
         if len(sentence_embedding.shape) == 1:
             sentence_embedding = [sentence_embedding]
         sentence_embeddings.extend(sentence_embedding)
