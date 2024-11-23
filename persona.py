@@ -152,25 +152,35 @@ Output your argument in the following JSON format:
 
         return json.loads((outputs))
 
-    def respond_to_argument(self, history, author_type):#round_topic, claim, evidence, counter_claim, counter_evidence):
+    def respond_to_argument(self, history, debate_node, parent_debate_node, temperature=0.1, top_p=0.99):
         """
         Respond to the paper given the current state of debate.
         """
-        k=3
         # augmented_topic = "" # TODO: SHIVAM (write a prompt, write the output json format)
         # argument = self.generate_arguments(augmented_topic, evidence)
         logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
-        
-        if author_type=="focus paper":
-            
-            prompt = f"""Your claims: {history['focus_arg']}, Your evidences: {history['f_evidence']}. Opposition claims: {history['cited_arg']}. Oppositions evidence: {history['c_claim']}."""
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+
+
+        prompt = history.replace(f'Author {self.id}:', "You:")
+
+
+        if self.focus:
+            claim = "your paper's contributions towards the \"topic\" are all novel relative to the other paper"
+            prompt += f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
+
         else:
-            prompt = f"""Your claims: {history['cited_arg']}, Your evidences: {history['c_claim']}. Opposition claims: {history['focus_arg']}. Oppositions evidence: {history['f_evidence']}."""
-        prompt = prompt + f"""In this step you must respond to claims of the opposition given your claims and evidences along with the claims and evidences of the opposition paper. Format the output as a schema: {{"argument_list":
+            claim = "the other paper's contributions towards the \"topic\" are not novel relative to your own paper"
+            prompt += f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
+            
+        
+        prompt+= f"""You used the following evidence to support your arguments:
+{format_evidence(parent_debate_node.evidence[self.id])}
+You also have preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
+{format_preemption(parent_debate_node.preemption[self.id])}Based on the debate history and your/your opposition's arguments and evidence, you must respond to the last argument presented by your opposition in debate. Format the output as a schema: {{"argument_list":
                                                 [
                                                     {{
-                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
+                                                        "title": <should be a sentence-long string where the value is  title>,
                                                         "description": <2-5 sentence string explaining the argument>
                                                     }}
                                                 ]
