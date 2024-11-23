@@ -152,7 +152,7 @@ Output your argument in the following JSON format:
 
         return json.loads((outputs))
 
-    def respond_to_argument(self, history, debate_node, parent_debate_node, temperature=0.1, top_p=0.99):
+    def respond_to_argument(self, history, parent_debate_node, temperature=0.1, top_p=0.99):
         """
         Respond to the paper given the current state of debate.
         """
@@ -177,49 +177,61 @@ Output your argument in the following JSON format:
         prompt+= f"""You used the following evidence to support your arguments:
 {format_evidence(parent_debate_node.evidence[self.id])}
 You also have preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
-{format_preemption(parent_debate_node.preemption[self.id])}Based on the debate history and your/your opposition's arguments and evidence, you must respond to the last argument presented by your opposition in debate. Format the output as a schema: {{"argument_list":
-                                                [
-                                                    {{
-                                                        "title": <should be a sentence-long string where the value is  title>,
-                                                        "description": <2-5 sentence string explaining the argument>
-                                                    }}
-                                                ]
-                                            }}"""
+{format_preemption(parent_debate_node.preemption[self.id])}Based on the debate history and your/your opposition's arguments and evidence, you must respond to the last argument presented by your opposition in debate.
+
+Output your argument in the following JSON format:
+
+{{
+    "title": <should be a brief, 10-15 word string where the value is the main argument of your response to the opposition>,
+    "description": <2-3 sentence string explaining your response to the opposition's last turn, based on evidence>
+}}
+"""
         # conversation = history.extend(conversation)
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        print(f'RESPONDING TO ARGUMENTS{outputs}')
+        print(f'RESPONDING TO ARGUMENTS FOR PAPER {self.id}:\n\n{outputs}')
         log_llm(prompt, outputs)
         return json.loads(outputs)
     
-    def revise_argument(self, history,author_type):
+    def revise_argument(self, history, parent_debate_node, temperature=0.1, top_p=0.99):
         """
         Strengthen the final argument at the debate node for a paper.
         """
-        k=3
-        # augmented_topic = "" # TODO: SHIVAM (write a prompt, write the output json format)
-        # argument = self.generate_arguments(augmented_topic, evidence)
+
         logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
        
-        if author_type=="focus paper":
-            
-            prompt = f"""Your claims: {history['focus_arg']}, Your evidences: {history['f_evidence']}, Your response: {history['focus_response']}. Opposition claims: {history['cited_arg']}. Oppositions evidence: {history['c_claim']}. Opposition response: {history['cited_response']}"""
+        prompt = history.replace(f'Author {self.id}:', "You:")
+
+
+        if self.focus:
+            claim = "your paper's contributions towards the \"topic\" are all novel relative to the other paper"
+            prompt += f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
+
         else:
-            prompt = f"""Your claims: {history['cited_arg']}, Your evidences: {history['c_claim']}. Your responses: {history['cited_response']}. Opposition claims: {history['focus_arg']}. Oppositions evidence: {history['f_evidence']}. Opposition response: {history['cited_response']}"""
-        prompt = prompt  + f"""In this step you must strengthen your claims given the reponses of the opposition. Format the output as a schema: {{"argument_list":
-                                                [
-                                                    {{
-                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
-                                                        "description": <2-5 sentence string explaining the argument>
-                                                    }}
-                                                ]
-                                            }}"""
+            claim = "the other paper's contributions towards the \"topic\" are not novel relative to your own paper"
+            prompt += f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
+            
+        
+        prompt+= f"""You used the following evidence to support your arguments:
+{format_evidence(parent_debate_node.evidence[self.id])}
+You also have preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
+{format_preemption(parent_debate_node.preemption[self.id])}Based on the debate history and your/your opposition's arguments and evidence, you must strengthen your claims given the reponses of the opposition.
+
+Output your argument in the following JSON format:
+
+{{
+    "title": <should be a brief, 10-15 word string where the value is the argument title>,
+    "description": <2-3 sentence string explaining the argument>
+}}
+"""
+        
         # conversation = history.extend(conversation)
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        print(f'REVISING ARGUMENTS {outputs}')
+        
+        print(f'REVISING ARGUMENTS FOR PAPER {self.id}:\n\n{outputs}')
         log_llm(prompt, outputs)
         return json.loads(outputs)
