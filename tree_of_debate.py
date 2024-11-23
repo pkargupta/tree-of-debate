@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "2,3"
+# os.environ['CUDA_VISIBLE_DEVICES'] = "2,3"
 from debate import DebateNode
 from paper_details import Paper
 from persona import PaperAuthor
@@ -87,6 +87,7 @@ if __name__ == '__main__':
     parser.add_argument("--cited_paper", default="https://arxiv.org/pdf/1810.04805")
     parser.add_argument("--topic", default="language model architectures")
     parser.add_argument("--log_dir", default="logs")
+    parser.add_argument("--download_dir", default="/")
     args = parser.parse_args()
 
     if not os.path.exists(args.log_dir):
@@ -97,7 +98,7 @@ if __name__ == '__main__':
     with open('data.json', 'r') as file:
         data = json.load(file)
 
-    model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,gpu_memory_utilization=0.5,max_num_seqs=100) #,enable_prefix_caching=True)
+    model_server = LLM(model="mistralai/Ministral-8B-Instruct-2410",tensor_parallel_size=2,gpu_memory_utilization=0.5,max_num_seqs=100) #,enable_prefix_caching=True)
 
     for item in data:
         run_code(args, item['focus'], item['cited'])
