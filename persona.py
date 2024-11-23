@@ -9,7 +9,7 @@ import json
 def format_args(list_arg):
     text_args = ""
     for counter, item in enumerate(list_arg):
-        text_args += f"\t- Argument #{counter+1}. {item['title']}: {item['description']}\n"
+        text_args += f"\t- Argument #{counter+1}. {item['argument_title']}: {item['description']}\n"
     return text_args
 
 def format_evidence(list_evi):
@@ -31,7 +31,7 @@ def format_preemption(list_pre):
     return text_pre
 
 class argument_schema(BaseModel):
-    title: Annotated[str, StringConstraints(strip_whitespace=True)]
+    argument_title: Annotated[str, StringConstraints(strip_whitespace=True)]
     description: Annotated[str, StringConstraints(strip_whitespace=True)]
 
 
@@ -83,7 +83,7 @@ class PaperAuthor:
 {{"argument_list":
     [
         {{
-            "title": <should be a brief, 10-15 word string where the value is the argument title>,
+            "argument_title": <should be a brief, 10-15 word string where the value is the argument argument_title>,
             "description": <1-2 sentence string explaining the argument>
         }}
     ]
@@ -122,23 +122,23 @@ class PaperAuthor:
 
         if self.focus:
             claim = "your paper's contributions towards the topic are all novel relative to the other paper"
-            prompt = f"You are an author of a paper that is debating another author on your claim topic:\n\t- Topic: {round_topic['title']}\n\t- Topic Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
+            prompt = f"You are an author of a paper that is debating another author on your claim topic:\n\t- Topic: {round_topic['argument_title']}\n\t- Topic Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
 
         else:
             claim = "the other paper's contributions towards the topic are not novel relative to your own paper"
-            prompt = f"You are an author of a paper that is debating another author about their claimed novelty:\n\t- Novelty Claim: {round_topic['title']}\n\t- Novelty Claim Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
+            prompt = f"You are an author of a paper that is debating another author about their claimed novelty:\n\t- Novelty Claim: {round_topic['argument_title']}\n\t- Novelty Claim Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
             
             prompt+=f"""\n\nYou initially argued that your own paper has the following novelties:\n{format_args(parent_debate_node.self_delib[self.id])}\n\n"""
             
         prompt+= f"""You used the following evidence to support your arguments:
 {format_evidence(parent_debate_node.evidence[self.id])}
 You also have preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
-{format_preemption(parent_debate_node.preemption[self.id])}Given the above (your initial argument, your evidence, the opposition paper's claimed points of novelty, and your counter evidence), make an argument for a specific reason why {claim}, with respect to the topic, {round_topic['title']}. 
+{format_preemption(parent_debate_node.preemption[self.id])}Given the above (your initial argument, your evidence, the opposition paper's claimed points of novelty, and your counter evidence), make an argument for a specific reason why {claim}, with respect to the topic, {round_topic['argument_title']}. 
 
 Output your argument in the following JSON format:
 
 {{
-    "title": <should be a brief, 10-15 word string where the value is the argument title>,
+    "argument_title": <should be a brief, 10-15 word string where the value is the argument argument_title>,
     "description": <2-3 sentence string explaining the argument>
 }}
 """     
@@ -177,7 +177,7 @@ You also have preemptively collected some counter evidence from your own paper b
         prompt += f"""\nOutput your new response in the following JSON format:
 
 {{
-    "title": <should be a brief, 10-15 word string where the value is the main argument of your response to the opposition>,
+    "argument_title": <should be a brief, 10-15 word string where the value is the main argument of your response to the opposition>,
     "description": <2-3 sentence string explaining your response to the opposition's last turn, based on the provided pool of evidence>
 }}
 """
@@ -215,7 +215,7 @@ You also had preemptively collected some counter evidence from your own paper ba
         
         prompt += f"""\nOutput your new, stronger argument in the following JSON format:
 {{
-    "title": <should be a brief, 10-15 word string where the value is your updated, strong response to the opposition's arguments>,
+    "argument_title": <should be a brief, 10-15 word string where the value is your updated, strong response to the opposition's arguments>,
     "description": <2-3 sentence string explaining your new argument as a response to the opposition's last turn, based on the provided pool of evidence>
 }}
 """
