@@ -16,5 +16,5 @@ export HF_TOKEN="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"
 # 	}' 
 
 rm -rf logs/*
-CUDA_VISIBLE_DEVICES=2,3 python tree_of_debate.py --focus_paper "https://arxiv.org/pdf/1706.03762" --cited_paper "https://arxiv.org/pdf/1810.04805" --topic "language model architectures"
+CUDA_VISIBLE_DEVICES=1,4 python tree_of_debate.py --focus_paper "https://arxiv.org/pdf/1706.03762" --cited_paper "https://arxiv.org/pdf/1810.04805" --topic "language model architectures"
 notify "tod"

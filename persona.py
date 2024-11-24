@@ -92,8 +92,35 @@ class PaperAuthor:
                     sampling_params=sampling_params)[0].outputs[0].text)
         log_llm(prompt, outputs)
         return json.loads(outputs)['argument_list']
-    def is_irrelevant_evidences(self, topic,):
+    
+    
+    def is_irrelevant_evidences(self, topic, evidences, temperature=0.1, top_p=0.99):
+        """
+        given a topic and evidence, check if the evidences support the topic. return refined list of evidence or say we do not talk about it. 
         
+        """
+        # logits_processor = JSONLogitsProcessor(schema=argument_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=3000, temperature=temperature, top_p=top_p)
+        
+        prompts= [f'Your objective is to check if a given evidence supports a claim or not. Given the Claim: {topic}.\n Evidence" {evidence}.\n Does the evidence support the claim? Answer with Yes or No only. Response: ' for evidence in evidences]
+        refined_evideces = []
+        opts = self.model.generate(prompts,
+                    sampling_params=sampling_params,
+                    use_tqdm=False)#[0].outputs[0].text
+        # for print(.outputs)
+        # exit(0)
+        for ind, i in enumerate(opts): 
+            text = i.outputs[0].text.strip()
+            # print("text",text)
+            if text =="Yes":
+                refined_evideces.append(evidences[ind])
+        # raise NotImplementedError
+        # print(refined_evideces)
+        # raise NotImplementedError
+        if len(refined_evideces)==0:
+            return [f'We do not talk about {topic}']
+        log_llm(evidences, refined_evideces)
+        return refined_evideces
 
     def preempt_arguments(self, counter_claims):
         """
@@ -106,7 +133,10 @@ class PaperAuthor:
 
         for c in counter_claims:
             augmented_topic = f'Does my paper also address the claim, \"{c.lower()}\"?'
-            extended_pool[augmented_topic] = self.gather_evidence(augmented_topic, return_scores=False)
+            extended_evidences = self.gather_evidence(augmented_topic, return_scores=False)
+            # if not is_irrelevant_evidences:
+            refined_evidences = self.is_irrelevant_evidences(c.lower(),extended_evidences)
+            extended_pool[augmented_topic] = refined_evidences
 
             # augmented_topic = f'Does my paper propose a better claim/idea than the claim, \"{c}\"?'
             # extended_pool[augmented_topic] = self.gather_evidence(augmented_topic)
