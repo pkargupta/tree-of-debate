@@ -92,6 +92,8 @@ class PaperAuthor:
                     sampling_params=sampling_params)[0].outputs[0].text)
         log_llm(prompt, outputs)
         return json.loads(outputs)['argument_list']
+    def is_irrelevant_evidences(self, topic,):
+        
 
     def preempt_arguments(self, counter_claims):
         """
