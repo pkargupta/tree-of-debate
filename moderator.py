@@ -9,7 +9,7 @@ from debate import DebateNode
 
 class expansion_schema(BaseModel):
     explanation: Annotated[str, StringConstraints(strip_whitespace=True)]
-    is_expand: Annotated[str, StringConstraints(strip_whitespace=True)]
+    is_expand: bool
 
 def arg_dict_to_str(args):
     arguments = ""
@@ -40,8 +40,8 @@ class Moderator:
 You must determine whether progress is being made. DO NOT focus on the language being used. Focus on the content of the arguments. Specifically, are these arguments sufficiently different enough to necesitate further debate? Are there new, deeper concepts being discussed between the two sets of arguments? Format the output as a schema: {{"expansion":
                                                 [
                                                     {{
-                                                        "explanation": <2-5 sentence string explaining whether new concepts are being argued between the \"previous arguments\" and the \"current arguments\">,
-                                                        "is_expand": <"True" or "False" depending on the explanation above>
+                                                        "explanation": <2-5 sentence string to explain your reasoning about whether further debate is necessary when comparing the \"previous arguments\" and the \"current arguments\">,
+                                                        "is_expand": <Pick only one of "True" or "False" depending on the explanation above>
                                                     }}
                                                 ]
                                             }}"""
@@ -53,4 +53,4 @@ You must determine whether progress is being made. DO NOT focus on the language 
         log_llm(prompt, outputs)
         outputs = json.loads(outputs)
 
-        return outputs['is_expand'].lower() == "true"
+        return outputs['is_expand']
