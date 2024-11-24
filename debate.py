@@ -8,7 +8,7 @@ def collect_arguments(arguments):
     counter = 1
     for args in arguments:
         for a in args['argument_list']:
-            text_args += f"{counter}. {a['title']}. "
+            text_args += f"{counter}. {a['argument_title']}. "
     return text_args
 
 
@@ -21,13 +21,14 @@ class DebateNode:
         self.evidence = {}
         self.preemption = {}
         self.init_arguments = {}
+        self.response = {}
         self.final_arguments = {}
 
         self.parent = parent
         self.round_topic = round_topic
 
     def __repr__(self):
-        return self.round_topic['title']
+        return self.round_topic['argument_title']
 
     def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor], log=None, num_evidence=5, num_arg=2):
         focus_paper = None
@@ -58,7 +59,7 @@ class DebateNode:
                     f.write(f'Develop Arguments:\n\n')
                     temp = ""
                     for i, arg in enumerate(author_args):
-                        temp += f"Argument #{i+1} - {arg['title']}.\n\t{arg['description']}\n"
+                        temp += f"Argument #{i+1} - {arg['argument_title']}.\n\t{arg['description']}\n"
                     f.write(f'{paper_author.focus} paper:\n{temp}\n\n')
         
         # preemption
@@ -67,7 +68,7 @@ class DebateNode:
             other_arguments = []
             for j in range(len(paper_authors)):
                 if j != i:
-                    other_arguments.extend([a['title'] for a in self.self_delib[paper_authors[j].id]])
+                    other_arguments.extend([a['argument_title'] for a in self.self_delib[paper_authors[j].id]])
 
             if paper_authors[i].id not in self.preemption.keys(): self.preemption[paper_authors[i].id] = {}
             self.preemption[paper_authors[i].id].update(paper_authors[i].preempt_arguments(other_arguments))
@@ -89,51 +90,36 @@ class DebateNode:
         return self.children
         
 
-    def conduct_debate(self, focus_paper: PaperAuthor, cited_paper: PaperAuthor):
-        # focus paper presents argument
-        f_claim = self.parent.arguments[focus_paper.id]
-        f_evidence = self.parent.evidence[focus_paper.id]
-        c_claim = self.parent.arguments[cited_paper.id]
-        c_evidence = self.parent.evidence[cited_paper.id]
+    def conduct_debate(self, paper_authors: List[PaperAuthor]):
+        convo_history = f"Debate Topic Information:\n\t- Topic: {self.round_topic['argument_title']}\n\t- Topic Description: {self.round_topic['description']}\n\n"
 
-        # TODO: f_evidence includes ALL of the retrieved segments relevant to ALL of the 
-        
-        conversation = defaultdict()
-        # add moderator response
-        conversation['f_evidence'] = f_evidence
-        conversation['c_claim'] = c_claim
         # each paper presents their arguments
-        focus_arg = focus_paper.present_argument(self.round_topic, collect_arguments(f_claim), f_evidence, collect_arguments(c_claim), c_evidence, k=3, author_type='focus paper')
-        conversation['focus_arg'] = focus_arg
+        convo_history += "Debate History:\n\n"
+        for author in paper_authors:
+            print(f"\nPRESENT ARGUMENT FOR AUTHOR {author.id}:\n")
+            author_arg = author.present_argument(debate_node=self, parent_debate_node=self.parent)
+            self.init_arguments[author.id] = author_arg
+            convo_history += f"\t-Author {author.id}: I argue that {author_arg['argument_title'].lower()}. {author_arg['description']}\n"
 
-        cited_arg = cited_paper.present_argument(self.round_topic, f_claim, f_evidence, c_claim, c_evidence, k=3, author_type='opposition paper')
-        conversation['cited_arg'] = cited_arg
-        # history = focus_arg.extend(cited_arg)
-
+        convo_history += "\n"
         # each paper responds to opposing side's arguments
-        focus_response = focus_paper.respond_to_argument(conversation, author_type='focus paper')#self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
-        # history.extend(focus_response)
-        conversation['focus_response'] = focus_response
+        for author in paper_authors:
+            print(f"\nRESPOND ARGUMENT FOR AUTHOR {author.id}:\n")
+            author_history = convo_history.replace(f'Author {author.id}:', "You:").replace(f'Author {1-author.id}:', "Opposition:")
+            author_response = author.respond_to_argument(author_history, parent_debate_node=self.parent)
+            self.response[author.id] = author_response
+            convo_history += f"\t-Author {author.id}: I believe that {author_response['argument_title'].lower()}. {author_response['description']}\n"
 
-        cited_response = cited_paper.respond_to_argument(conversation, author_type='opposition paper')#self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
-        # history.extend(focus_response)
-        conversation['cited_response'] = cited_response
-        # history.extend(cited_response)
-        
+        convo_history += "\n"
         # each paper revises their arguments
-        new_focus_arg = focus_paper.revise_argument(conversation, author_type='focus paper')#, self.round_topic, f_claim, f_evidence, c_claim, c_evidence)
-        conversation['new_focus_arg'] = new_focus_arg
+        for author in paper_authors:
+            print(f"\nREVISE ARGUMENT FOR AUTHOR {author.id}:\n")
+            author_history = convo_history.replace(f'Author {author.id}:', "You:").replace(f'Author {1-author.id}:', "Opposition:")
+            author_revision = author.revise_argument(author_history, parent_debate_node=self.parent)
+            self.final_arguments[author.id] = author_revision
+            convo_history += f"\t-Author {author.id}: I argue that {author_revision['argument_title'].lower()}. {author_revision['description']}\n"
 
-        new_cited_arg = cited_paper.revise_argument(conversation, author_type='opposition paper')#, self.round_topic, f_claim, f_evidence, c_claim, c_evidence)            
-        conversation['new_cited_arg'] = new_cited_arg
-        # history.extend(new_focus_arg)
-        # history.extend(new_cited_arg)
-
-        conv_list = [f"Round 1: {self.round_topic}"]
-        for key in conversation.keys():
-            conv_list.append(f"\t{key}: {conversation[key]}\n")
-
-        return conv_list, new_focus_arg, new_cited_arg
+        return convo_history
     
     def expand_node(self, parent_node, new_node):
         parent_node.children.append(new_node)

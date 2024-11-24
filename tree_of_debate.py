@@ -68,14 +68,14 @@ def run_code(args, f_pap, c_pap):
 
     while len(queue_of_rounds) > 0:
         round = queue_of_rounds.pop(0)
-        conversation, new_focus_arg, new_cited_arg = round.conduct_debate(focus_paper, cited_paper)
+        conversation = round.conduct_debate([focus_paper, cited_paper])
         conversation_history.extend(conversation)
-        if moderator.is_expand(round.self_delib, [new_focus_arg, new_cited_arg]):
+        if moderator.is_expand(round):
             new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors)
             queue_of_rounds.extend(new_subtrees)
 
     with open('logs/conversation_history.txt', 'w+') as f:
-        f.write('\n'.join(conversation_history))
+        f.write(''.join(conversation_history))
 
 
 
