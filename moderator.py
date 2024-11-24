@@ -14,7 +14,7 @@ class expansion_schema(BaseModel):
 def arg_dict_to_str(args):
     arguments = ""
     for i, key in enumerate(args.keys()):
-        arguments += f"{(i+1)}. {args[key]['argument_title']}. "
+        arguments += f"{(i+1)}. {args[key]['argument_title']}: {args[key]['description']}. "
 
     return arguments.strip()
 
@@ -30,22 +30,14 @@ class Moderator:
         new_args = arg_dict_to_str(round.final_arguments)
         logits_processor = JSONLogitsProcessor(schema=expansion_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
-       
-        prompt = f"""In this step you must strengthen your claims given the reponses of the opposition. Format the output as a schema: {{"argument_list":
-                                                [
-                                                    {{
-                                                        "title": <should be a sentence-long string where the value is the high-level argument title>,
-                                                        "description": <2-5 sentence string explaining the argument>
-                                                    }}
-                                                ]
-                                            }}"""
+
         prompt = f"""You are a moderator to a debate in which two scientific papers are being discussed. The topic of the debate is \"{round.round_topic}\". Below, you are given the previous set of arguments and the current set of arguments. 
 
 \"previous arguments\": {prev_args}
 
 \"current arguments\": {new_args}
 
-You must determine whether progress is being made. Specifically, are these arguments sufficiently different enough to necesitate further debate? Are there new, deeper concepts being discussed between the two sets of arguments? Format the output as a schema: {{"expansion":
+You must determine whether progress is being made. DO NOT focus on the language being used. Focus on the content of the arguments. Specifically, are these arguments sufficiently different enough to necesitate further debate? Are there new, deeper concepts being discussed between the two sets of arguments? Format the output as a schema: {{"expansion":
                                                 [
                                                     {{
                                                         "explanation": <2-5 sentence string explaining whether new concepts are being argued between the \"previous arguments\" and the \"current arguments\">,
