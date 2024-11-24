@@ -30,7 +30,7 @@ def run_code(args, f_pap, c_pap):
     moderator = Moderator(model_server)
 
     paper_authors = [focus_paper, cited_paper]
-    leaf_node_label = args.topic
+    leaf_node_label = {'argument_title': args.topic, 'description': args.topic}
 
     if args.log_dir != "":
         with open(os.path.join(args.log_dir, 'self_deliberation.txt'), 'w') as f:

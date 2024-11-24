@@ -11,9 +11,12 @@ def collect_arguments(arguments):
             text_args += f"{counter}. {a['argument_title']}. "
     return text_args
 
+def topic_dict_to_str(topic):
+    # return f"{topic['argument_title']}: {topic['description']}." # keeping this in case we want to represent topics with the title and description
+    return topic['argument_title']
 
 class DebateNode:
-    def __init__(self, round_topic, parent=None) -> None:
+    def __init__(self, round_topic: str, parent=None) -> None:
         self.children = []
         self.content = []
 
@@ -26,6 +29,7 @@ class DebateNode:
 
         self.parent = parent
         self.round_topic = round_topic
+    
 
     def __repr__(self):
         return self.round_topic['argument_title']
@@ -34,7 +38,7 @@ class DebateNode:
         focus_paper = None
         for paper_author in paper_authors:
             # gather evidence
-            evidence, scores = paper_author.gather_evidence(topic, k=num_evidence, return_scores=True)
+            evidence, scores = paper_author.gather_evidence(topic_dict_to_str(topic), k=num_evidence, return_scores=True)
 
             if paper_author.id not in self.evidence.keys(): self.evidence[paper_author.id] = []
             self.evidence[paper_author.id].extend(evidence)
