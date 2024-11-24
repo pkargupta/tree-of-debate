@@ -75,7 +75,7 @@ def run_code(args, f_pap, c_pap):
             queue_of_rounds.extend(new_subtrees)
 
     with open('logs/conversation_history.txt', 'w+') as f:
-        f.write('\n'.join(conversation_history))
+        f.write(''.join(conversation_history))
 
 
 
