@@ -1,0 +1,5 @@
+1. change the evidence retrieval or the develop arguments to include more details about the methodology, datasets, evaluation
+2. generate leaf_node_label with summary from llama (or something)
+3. generate final summary at the end of the debate
+4. opposition's evidence into generating the argument during the debate
+5. map the evidences between debate children

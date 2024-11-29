@@ -39,7 +39,10 @@ class argument_list_schema(BaseModel):
     argument_list : conlist(argument_schema, min_length=1,max_length=10)
 
 class relevance_schema(BaseModel):
-    is_relevant : Annotated[str, StringConstraints(strip_whitespace=True)]
+    supports_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
+    refutes_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
+    clarifies_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
+    irrelevant_to_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
 
 def log_llm(prompt, output):
     with open('logs/llm_calls.txt', 'a+') as f:
@@ -69,7 +72,7 @@ class PaperAuthor:
             return evidence, scores
         return evidence
 
-    def generate_arguments(self, topic, evidence=False, temperature=0.1, top_p=0.99, k=2):
+    def generate_arguments(self, topic, evidence=False, temperature=0.3, top_p=0.99, k=2):
         """
         Given topic and evidence, generate k arguments. 
         If the paper is a focus paper, and the debate round is round #1, the topic should be "I am great".
@@ -105,20 +108,29 @@ class PaperAuthor:
         # logits_processor = JSONLogitsProcessor(schema=argument_schema, llm=self.model.llm_engine)
         logits_processor = JSONLogitsProcessor(schema=relevance_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=100, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+
+        relevancy_schema_str = """{{
+    "supports_claim": <"Yes"/"No" if the evidence supports the claim>,
+    "refutes_claim": <"Yes"/"No" if the evidence refutes the opposition's claim>
+    "clarifies_claim": <"Yes"/"No" if the evidence clarifies the claim>,
+    "irrelevant_to_claim": <"Yes"/"No" if the evidence is irrelevant to the claim>,
+}}
+"""
         
-        prompts= [f'Your objective is to check if a given evidence is relevant to a claim or not (relevancy means evidence that helps either support, refute, or clarify the given claim).\nGiven the Claim: {topic}.\n Evidence: {evidence}.\n Is the evidence relevant to the claim? Answer with "Yes" or "No" only as the value of "is_relevant".' for evidence in evidences]
+        # prompts= [f'Your objective is to check if a given evidence is relevant to a claim or not (relevancy means evidence that helps either support, refute, or clarify the given claim).\nGiven the Claim: {topic}.\n Evidence: {evidence}.\n Is the evidence relevant to the claim? Answer with "Yes" or "No" only as the value of "is_relevant".' for evidence in evidences]
+        prompts= [f'Your objective is to check if a given evidence is relevant to a claim or not (relevancy means evidence that helps either support, refute, or clarify the given claim).\nGiven the Claim: {topic}.\nEvidence: {evidence}.\nFill out the following schema to{relevancy_schema_str}' for evidence in evidences]
         refined_evidence = []
         opts = self.model.generate(prompts,
                     sampling_params=sampling_params,
                     use_tqdm=False)
-        print(opts)
-        for ind, i in enumerate(opts): 
-            text = json.loads(i.outputs[0].text.strip())['is_relevant']
-            if "Yes" in text:
+        for ind, i in enumerate(opts):
+            text = json.loads(i.outputs[0].text.strip().lower())
+            if ("no" in text['irrelevant_to_claim']) and (("yes" in text['supports_claim']) or ("yes" in text['refutes_claim']) or ("yes" in text['clarifies_claim'])):
                 refined_evidence.append(evidences[ind])
-        if len(refined_evidence)==0:
+            log_llm(prompts[ind], text)
+            
+        if len(refined_evidence) == 0:
             return [f'We do not address the opposition\'s claim: {topic}']
-        log_llm(evidences, refined_evidence)
         return refined_evidence
 
     def preempt_arguments(self, counter_claims):
@@ -181,7 +193,7 @@ Output your argument in the following JSON format:
 
         return json.loads((outputs))
 
-    def respond_to_argument(self, history, parent_debate_node, temperature=0.1, top_p=0.99):
+    def respond_to_argument(self, history, parent_debate_node, temperature=0.6, top_p=0.99):
         """
         Respond to the paper given the current state of debate.
         """
@@ -221,7 +233,7 @@ You also have preemptively collected some counter evidence from your own paper b
         log_llm(prompt, outputs)
         return json.loads(outputs)
     
-    def revise_argument(self, history, parent_debate_node, temperature=0.1, top_p=0.99):
+    def revise_argument(self, history, parent_debate_node, temperature=0.45, top_p=0.99):
         """
         Strengthen the final argument at the debate node for a paper.
         """
