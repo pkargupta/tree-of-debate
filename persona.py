@@ -38,6 +38,9 @@ class argument_schema(BaseModel):
 class argument_list_schema(BaseModel):
     argument_list : conlist(argument_schema, min_length=1,max_length=10)
 
+class relevance_schema(BaseModel):
+    is_relevant : Annotated[str, StringConstraints(strip_whitespace=True)]
+
 def log_llm(prompt, output):
     with open('logs/llm_calls.txt', 'a+') as f:
         f.write('--------------------------------------------\n')
@@ -100,27 +103,23 @@ class PaperAuthor:
         
         """
         # logits_processor = JSONLogitsProcessor(schema=argument_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=3000, temperature=temperature, top_p=top_p)
+        logits_processor = JSONLogitsProcessor(schema=relevance_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=100, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
         
-        prompts= [f'Your objective is to check if a given evidence supports a claim or not. Given the Claim: {topic}.\n Evidence" {evidence}.\n Does the evidence support the claim? Answer with Yes or No only. Response: ' for evidence in evidences]
-        refined_evideces = []
+        prompts= [f'Your objective is to check if a given evidence is relevant to a claim or not (relevancy means evidence that helps either support, refute, or clarify the given claim).\nGiven the Claim: {topic}.\n Evidence: {evidence}.\n Is the evidence relevant to the claim? Answer with "Yes" or "No" only as the value of "is_relevant".' for evidence in evidences]
+        refined_evidence = []
         opts = self.model.generate(prompts,
                     sampling_params=sampling_params,
-                    use_tqdm=False)#[0].outputs[0].text
-        # for print(.outputs)
-        # exit(0)
+                    use_tqdm=False)
+        print(opts)
         for ind, i in enumerate(opts): 
-            text = i.outputs[0].text.strip()
-            # print("text",text)
-            if text =="Yes":
-                refined_evideces.append(evidences[ind])
-        # raise NotImplementedError
-        # print(refined_evideces)
-        # raise NotImplementedError
-        if len(refined_evideces)==0:
-            return [f'We do not talk about {topic}']
-        log_llm(evidences, refined_evideces)
-        return refined_evideces
+            text = json.loads(i.outputs[0].text.strip())['is_relevant']
+            if "Yes" in text:
+                refined_evidence.append(evidences[ind])
+        if len(refined_evidence)==0:
+            return [f'We do not address the opposition\'s claim: {topic}']
+        log_llm(evidences, refined_evidence)
+        return refined_evidence
 
     def preempt_arguments(self, counter_claims):
         """
