@@ -72,7 +72,7 @@ class DebateNode:
             other_arguments = []
             for j in range(len(paper_authors)):
                 if j != i:
-                    other_arguments.extend([a['argument_title'] for a in self.self_delib[paper_authors[j].id]])
+                    other_arguments.extend([a for a in self.self_delib[paper_authors[j].id]])
 
             if paper_authors[i].id not in self.preemption.keys(): self.preemption[paper_authors[i].id] = {}
             self.preemption[paper_authors[i].id].update(paper_authors[i].preempt_arguments(other_arguments))
@@ -112,7 +112,7 @@ class DebateNode:
             author_history = convo_history.replace(f'Author {author.id}:', "You:").replace(f'Author {1-author.id}:', "Opposition:")
             author_response = author.respond_to_argument(author_history, parent_debate_node=self.parent)
             self.response[author.id] = author_response
-            convo_history += f"\t-Author {author.id}: I believe that {author_response['argument_title'].lower()}. {author_response['description']}\n"
+            convo_history += f"\t-Author {author.id}: {author_response['author_response']}\n"
 
         convo_history += "\n"
         # each paper revises their arguments

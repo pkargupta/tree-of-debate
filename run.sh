@@ -19,5 +19,5 @@ rm -rf logs/*
 focus_paper="https://arxiv.org/pdf/2406.11709" # treeinstruct
 cited_paper="https://arxiv.org/pdf/2310.10648" # bridge
 topic="helping students fix their errors"
-CUDA_VISIBLE_DEVICES=2,3 python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited --topic $topic
+CUDA_VISIBLE_DEVICES=2,3 python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "helping students fix their errors"
 notify "tod"

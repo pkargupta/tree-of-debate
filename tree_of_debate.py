@@ -66,13 +66,17 @@ def run_code(args, f_pap, c_pap):
     queue_of_rounds: List[DebateNode] = []
     queue_of_rounds.extend(subtrees)
 
+    depth = 0
+    max_depth = 2
+
     while len(queue_of_rounds) > 0:
         round = queue_of_rounds.pop(0)
         conversation = round.conduct_debate([focus_paper, cited_paper])
         conversation_history.extend(conversation)
-        if moderator.is_expand(round):
+        if moderator.is_expand(round) and depth < max_depth:
             new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors)
             queue_of_rounds.extend(new_subtrees)
+            depth += 1
 
     with open('logs/conversation_history.txt', 'w+') as f:
         f.write(''.join(conversation_history))
@@ -96,7 +100,7 @@ if __name__ == '__main__':
     with open('data.json', 'r') as file:
         data = json.load(file)
 
-    model_server = LLM(model="mistralai/Ministral-8B-Instruct-2410",tensor_parallel_size=2,gpu_memory_utilization=0.5,max_num_seqs=100) #,enable_prefix_caching=True)
+    model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,gpu_memory_utilization=0.5,max_num_seqs=100) #,enable_prefix_caching=True)
 
     for item in data:
         run_code(args, item['focus'], item['cited'])

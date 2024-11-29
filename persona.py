@@ -34,6 +34,8 @@ class argument_schema(BaseModel):
     argument_title: Annotated[str, StringConstraints(strip_whitespace=True)]
     description: Annotated[str, StringConstraints(strip_whitespace=True)]
 
+class response_schema(BaseModel):
+    author_response: Annotated[str, StringConstraints(strip_whitespace=True)]
 
 class argument_list_schema(BaseModel):
     argument_list : conlist(argument_schema, min_length=1,max_length=10)
@@ -85,7 +87,7 @@ class PaperAuthor:
         prompt = f"You are a helpful assistant. You are an author of a paper that is trying to convince others of your paper's contributions towards {topic}."
 
         formatted_evidence = "\n".join([f'Retrieved Evidence #{idx+1}: {e}' for idx, e in enumerate(evidence)])
-        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\nBased on the evidence, output a list of {k} diverse, specific arguments on your paper's major unique contributions towards {topic}, that are all supported by the evidence. Each argument should make a unique point. Output your list of arguments in the following JSON format:
+        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\nBased on the evidence, output a list of {k} diverse, specific arguments on your paper's major unique contributions towards {topic}, that are all supported by the evidence (ONLY quote excerpts/phrases from the evidence, DO NOT mention the specific Evidence #). Each argument should make a unique point. Output your list of arguments in the following JSON format:
 {{"argument_list":
     [
         {{
@@ -100,7 +102,7 @@ class PaperAuthor:
         return json.loads(outputs)['argument_list']
     
     
-    def is_irrelevant_evidences(self, topic, evidences, temperature=0.1, top_p=0.99):
+    def is_irrelevant_evidences(self, topic, evidences, temperature=0, top_p=1):
         """
         given a topic and evidence, check if the evidences support the topic. return refined list of evidence or say we do not talk about it. 
         
@@ -109,7 +111,7 @@ class PaperAuthor:
         logits_processor = JSONLogitsProcessor(schema=relevance_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=100, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
-        relevancy_schema_str = """{{
+        relevancy_schema_str = f"""{{
     "supports_claim": <"Yes"/"No" if the evidence supports the claim>,
     "refutes_claim": <"Yes"/"No" if the evidence refutes the opposition's claim>
     "clarifies_claim": <"Yes"/"No" if the evidence clarifies the claim>,
@@ -118,7 +120,7 @@ class PaperAuthor:
 """
         
         # prompts= [f'Your objective is to check if a given evidence is relevant to a claim or not (relevancy means evidence that helps either support, refute, or clarify the given claim).\nGiven the Claim: {topic}.\n Evidence: {evidence}.\n Is the evidence relevant to the claim? Answer with "Yes" or "No" only as the value of "is_relevant".' for evidence in evidences]
-        prompts= [f'Your objective is to check if a given evidence is relevant to a claim or not (relevancy means evidence that helps either support, refute, or clarify the given claim).\nGiven the Claim: {topic}.\nEvidence: {evidence}.\nFill out the following schema to{relevancy_schema_str}' for evidence in evidences]
+        prompts= [f'Your objective is to check if a given evidence is relevant to a claim or not (relevancy means evidence that helps either support, refute, or clarify the given claim).\nClaim: {topic["argument_title"]}.\nDescription of Claim: {topic["description"]}\nEvidence: {evidence}.\nFill out the following schema:\n{relevancy_schema_str}' for evidence in evidences]
         refined_evidence = []
         opts = self.model.generate(prompts,
                     sampling_params=sampling_params,
@@ -143,10 +145,10 @@ class PaperAuthor:
         extended_pool = {}
 
         for c in counter_claims:
-            augmented_topic = f'Does my paper also address the claim, \"{c.lower()}\"?'
+            augmented_topic = f"{c['argument_title']}: {c['description']}" #f'Does my paper also address the claim, \"{c.lower()}\"?'
             extended_evidences = self.gather_evidence(augmented_topic, return_scores=False)
             # if not is_irrelevant_evidences:
-            refined_evidences = self.is_irrelevant_evidences(c.lower(),extended_evidences)
+            refined_evidences = self.is_irrelevant_evidences(c,extended_evidences)
             extended_pool[augmented_topic] = refined_evidences
 
             # augmented_topic = f'Does my paper propose a better claim/idea than the claim, \"{c}\"?'
@@ -199,7 +201,7 @@ Output your argument in the following JSON format:
         """
         # augmented_topic = "" # TODO: SHIVAM (write a prompt, write the output json format)
         # argument = self.generate_arguments(augmented_topic, evidence)
-        logits_processor = JSONLogitsProcessor(schema=argument_schema, llm=self.model.llm_engine)
+        logits_processor = JSONLogitsProcessor(schema=response_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=3000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
 
@@ -220,8 +222,7 @@ You also have preemptively collected some counter evidence from your own paper b
         prompt += f"""\nOutput your new response in the following JSON format:
 
 {{
-    "argument_title": <should be a brief, 10-15 word string where the value is the main argument of your response to the opposition>,
-    "description": <2-3 sentence string explaining your response to the opposition's last turn, based on the provided pool of evidence>
+    "author_response": <2-3 sentence string explaining your response to the opposition's last turn, based on the provided pool of evidence>
 }}
 """
         print(prompt + '\n\n')

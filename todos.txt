@@ -3,3 +3,4 @@
 3. generate final summary at the end of the debate
 4. opposition's evidence into generating the argument during the debate
 5. map the evidences between debate children
+6. make sure revise arguments actually revises
