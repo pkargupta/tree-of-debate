@@ -1,8 +1,9 @@
 export HF_TOKEN="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"
-# export HF_HOME="/shared/data/shivama2/hf_cache/"
-# export HF_DATASETS_CACHE="/shared/data/shivama2/hf_cache/"
+export HF_HOME="/work/nvme/bcaq/shivama2/hf_cache_rlhf/"
+export HF_DATASETS_CACHE="/work/nvme/bcaq/shivama2/hf_cache_rlhf/"
 
-# export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO! 
+export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO! 
+
 
 # vllm serve "nvidia/Llama-3.1-Nemotron-70B-Instruct-HF"   
 
@@ -19,5 +20,5 @@ rm -rf logs/*
 focus_paper="https://arxiv.org/pdf/2406.11709" # treeinstruct
 cited_paper="https://arxiv.org/pdf/2310.10648" # bridge
 topic="helping students fix their errors"
-CUDA_VISIBLE_DEVICES=2,3 python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "helping students fix their errors"
-notify "tod"
+python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "helping students fix their errors"
+# notify "tod"

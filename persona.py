@@ -5,7 +5,7 @@ from unidecode import unidecode
 from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
 import json
-
+import re
 def format_args(list_arg):
     text_args = ""
     for counter, item in enumerate(list_arg):
@@ -29,6 +29,10 @@ def format_preemption(list_pre):
         text_pre += f"\n"
         claim_no += 1
     return text_pre
+
+class revise_schema(BaseModel):
+    revised_argument_title: Annotated[str, StringConstraints(strip_whitespace=True)]
+    revised_argument_description: Annotated[str, StringConstraints(strip_whitespace=True)]
 
 class argument_schema(BaseModel):
     argument_title: Annotated[str, StringConstraints(strip_whitespace=True)]
@@ -195,34 +199,48 @@ Output your argument in the following JSON format:
 
         return json.loads((outputs))
 
-    def respond_to_argument(self, history, parent_debate_node, temperature=0.6, top_p=0.99):
+    def respond_to_argument(self, history, parent_debate_node, temperature=0.4, top_p=0.99):
         """
         Respond to the paper given the current state of debate.
         """
         # augmented_topic = "" # TODO: SHIVAM (write a prompt, write the output json format)
         # argument = self.generate_arguments(augmented_topic, evidence)
         logits_processor = JSONLogitsProcessor(schema=response_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=3000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+        sampling_params = SamplingParams(max_tokens=3000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p, min_tokens=64)
 
+        last_occurrence_index = history.rfind("-Opposition:")
+
+# Check if "-Opposition:" exists in the string
+        if last_occurrence_index != -1:
+            history = history[:last_occurrence_index] + "<respond_to_this>\n" + history[last_occurrence_index:]+"</respond_to_this>"
+    
+     
+
+        print(f'HISTORY {history}')
+        # opts_history = re.findall(r'(-Opposition: .+)$', history)
+        # print(f'opts_history {opts_history}')
+        # history = history.replace(opts_history[-1], f'<respond_to_this>\n{opts_history}\n</respond_to_this>')
 
         if self.focus:
             claim = "your paper's contributions towards the \"topic\" are all novel relative to the other paper"
-            prompt = f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
+            prompt = f"You are an author of a paper that is debating another author (Opposition).\n\nYour debate claim is that {claim}. Refer to the Opposition's arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
 
         else:
             claim = "the other paper's contributions towards the \"topic\" are not novel relative to your own paper"
-            prompt = f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
+            prompt = f"You are an author of a paper that is debating another author (Opposition).\n\nYour debate claim is that {claim}. Refer to the Opposition's arguments, as well as your own paper's segments as evidence when refining your arguments."
             
         
-        prompt+= f"""You used the following evidence to support your arguments:
-{format_evidence(parent_debate_node.evidence[self.id])}
-You also have preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
-{format_preemption(parent_debate_node.preemption[self.id])}Based on the debate history and your/your opposition's arguments and evidence, you must respond to the last argument presented by your opposition in debate.\n\n""" + history
+#         prompt+= f"""You used the following evidence to support your arguments:
+# {format_evidence(parent_debate_node.evidence[self.id])}
+# You also have preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
+# {format_preemption(parent_debate_node.preemption[self.id])}
+# Here is your conversation debate history with the opposition paper. Youu must respond to the last argument presented by your opposition in debate. A response may consist of an acknowledgement of the opposition's previous response, any clarifying questions based on the opposition's claims and reasoning, and any clarifications of your own presented arguments based on the opposition.\n\n""" + history
+        prompt+= f"""Here is your conversation debate history with the opposition paper. You must respond to the last argument presented by your opposition in debate (tagged between <respond_to_this> and </respond_to_this>). A response may consist of an acknowledgement of the opposition's previous response, any clarifying questions based on the opposition's claims and reasoning, and any clarifications of your own presented arguments based on the opposition.\n\n""" + history
         
         prompt += f"""\nOutput your new response in the following JSON format:
 
 {{
-    "author_response": <2-3 sentence string explaining your response to the opposition's last turn, based on the provided pool of evidence>
+    "author_response": <2-3 sentence string response to the opposition's last turn (tagged between <respond_to_this> and </respond_to_this>)>
 }}
 """
         print(prompt + '\n\n')
@@ -239,28 +257,28 @@ You also have preemptively collected some counter evidence from your own paper b
         Strengthen the final argument at the debate node for a paper.
         """
 
-        logits_processor = JSONLogitsProcessor(schema=argument_schema, llm=self.model.llm_engine)
+        logits_processor = JSONLogitsProcessor(schema=revise_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=3000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
 
         if self.focus:
-            claim = "your paper's contributions towards the \"topic\" are all novel relative to the other paper"
-            prompt = f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
+            claim = "your paper's contributions towards the \"topic\" are novel relative to the other paper"
+            prompt = f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when generating your new, revised argument.\n\n"
 
         else:
-            claim = "the other paper's contributions towards the \"topic\" are not novel relative to your own paper"
+            claim = "the other paper's contributions towards the \"topic\" are not novel relative to your own paper's contributions towards the \"topic\""
             prompt = f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
             
         
         prompt+= f"""Use the following evidence to support your arguments:
 {format_evidence(parent_debate_node.evidence[self.id])}
 You also had preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
-{format_preemption(parent_debate_node.preemption[self.id])}Based on the debate history and your/your opposition's arguments and evidence, you must construct a stronger argument given the responses of the opposition.\n\n""" + history
+{format_preemption(parent_debate_node.preemption[self.id])}Based on the debate history and your/your opposition's arguments and evidence, you must construct a new, stronger argument related to the \"topic\".\n\n""" + history
         
-        prompt += f"""\nOutput your new, stronger argument in the following JSON format:
+        prompt += f"""\nOutput your new, revised argument in the following JSON format:
 {{
-    "argument_title": <should be a brief, 10-15 word string where the value is your updated, strong response to the opposition's arguments>,
-    "description": <2-3 sentence string explaining your new argument as a response to the opposition's last turn, based on the provided pool of evidence>
+    "revised_argument_title": <should be a brief, 10-15 word string where the value is your new, stronger argument on your paper's novelty on the \"topic\" based on your debate with the opposition>,
+    "revised_argument_description": <2-3 sentence string explaining your new argument>
 }}
 """
         print(prompt + '\n\n')

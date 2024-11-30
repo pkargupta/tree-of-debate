@@ -110,6 +110,7 @@ class DebateNode:
         for author in paper_authors:
             print(f"\nRESPOND ARGUMENT FOR AUTHOR {author.id}:\n")
             author_history = convo_history.replace(f'Author {author.id}:', "You:").replace(f'Author {1-author.id}:', "Opposition:")
+            
             author_response = author.respond_to_argument(author_history, parent_debate_node=self.parent)
             self.response[author.id] = author_response
             convo_history += f"\t-Author {author.id}: {author_response['author_response']}\n"
@@ -121,7 +122,7 @@ class DebateNode:
             author_history = convo_history.replace(f'Author {author.id}:', "You:").replace(f'Author {1-author.id}:', "Opposition:")
             author_revision = author.revise_argument(author_history, parent_debate_node=self.parent)
             self.final_arguments[author.id] = author_revision
-            convo_history += f"\t-Author {author.id}: I argue that {author_revision['argument_title'].lower()}. {author_revision['description']}\n"
+            convo_history += f"\t-Author {author.id}: I argue that {author_revision['revised_argument_title'].lower()}. {author_revision['revised_argument_description']}\n"
 
         return convo_history
     

@@ -1,5 +1,4 @@
 *.json
-*.txt
 .cache/*
 *.pkl
 __pycache__/*

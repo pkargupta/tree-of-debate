@@ -11,10 +11,13 @@ class expansion_schema(BaseModel):
     explanation: Annotated[str, StringConstraints(strip_whitespace=True)]
     is_expand: bool
 
-def arg_dict_to_str(args):
+def arg_dict_to_str(args, arg_type=True):
     arguments = ""
     for i, key in enumerate(args.keys()):
-        arguments += f"{(i+1)}. {args[key]['argument_title']}: {args[key]['description']}. "
+        if arg_type:
+            arguments += f"{(i+1)}. {args[key]['argument_title']}: {args[key]['description']}. "
+        else:
+            arguments += f"{(i+1)}. {args[key]['revised_argument_title']}: {args[key]['revised_argument_description']}. "
 
     return arguments.strip()
 
@@ -26,10 +29,10 @@ class Moderator:
         """
         Based on the previous arguments and the new arguments, determine if any progress has been made.
         """
-        prev_args = arg_dict_to_str(round.init_arguments)
-        new_args = arg_dict_to_str(round.final_arguments)
+        prev_args = arg_dict_to_str(round.init_arguments, True)
+        new_args = arg_dict_to_str(round.final_arguments, False)
         logits_processor = JSONLogitsProcessor(schema=expansion_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor],min_tokens=50)
 
         prompt = f"""You are a moderator to a debate in which two scientific papers are being discussed. The topic of the debate is \"{round.round_topic}\". Below, you are given the previous set of arguments and the current set of arguments. 
 
