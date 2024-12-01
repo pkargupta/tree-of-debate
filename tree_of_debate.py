@@ -44,7 +44,7 @@ def run_code(args, f_pap, c_pap):
         log_dir=args.log_dir
     )
 
-    moderator = Moderator(model_server)
+    moderator = Moderator(model_server, args.log_dir)
 
     paper_authors = [focus_paper, cited_paper]
     leaf_node_label = {'argument_title': args.topic, 'description': args.topic}

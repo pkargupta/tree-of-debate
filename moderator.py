@@ -25,8 +25,9 @@ def arg_dict_to_str(args, arg_type=True):
     return arguments.strip()
 
 class Moderator:
-    def __init__(self, model):
+    def __init__(self, model, log_dir):
         self.model = model # define model - Llama 3.
+        self.log_dir = log_dir
     
     def is_expand(self, round: DebateNode):
         """
@@ -56,7 +57,7 @@ Output your argument in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         print(f'IS EXPAND {outputs}')
-        log_llm(prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)
 
         return outputs['is_expand']
