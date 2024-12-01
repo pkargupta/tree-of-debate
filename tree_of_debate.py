@@ -29,17 +29,19 @@ def topic_dict_to_str(topic):
 def run_code(args, f_pap, c_pap):
 
     focus_paper = PaperAuthor(
-    model = model_server,
-    paper = Paper(f_pap),
-    focus=True,
-    id=0
+        model = model_server,
+        paper = Paper(f_pap),
+        focus=True,
+        id=0,
+        log_dir=args.log_dir
     )
 
     cited_paper = PaperAuthor(
         model = model_server,
         paper = Paper(c_pap),
         focus=False,
-        id=1
+        id=1,
+        log_dir=args.log_dir
     )
 
     moderator = Moderator(model_server)
