@@ -12,8 +12,10 @@ def collect_arguments(arguments):
     return text_args
 
 def topic_dict_to_str(topic):
-    # return f"{topic['argument_title']}: {topic['description']}." # keeping this in case we want to represent topics with the title and description
-    return topic['argument_title']
+    if topic['argument_title'] == topic['description']:
+        return topic['argument_title']
+    else:
+        return f"{topic['argument_title']}: {topic['description']}." # keeping this in case we want to represent topics with the title and description
 
 class DebateNode:
     def __init__(self, round_topic: str, parent=None) -> None:
@@ -63,7 +65,7 @@ class DebateNode:
                     f.write(f'Develop Arguments:\n\n')
                     temp = ""
                     for i, arg in enumerate(author_args):
-                        temp += f"Argument #{i+1} - {arg['argument_title']}.\n\t{arg['description']}\n"
+                        temp += f"Argument #{i+1} - {arg['argument_title']}.\n\t{arg['description']}\n\t{arg['evidence']}\n"
                     f.write(f'{paper_author.focus} paper:\n{temp}\n\n')
         
         # preemption
@@ -95,10 +97,11 @@ class DebateNode:
         
 
     def conduct_debate(self, paper_authors: List[PaperAuthor]):
-        convo_history = f"Debate Topic Information:\n\t- Topic: {self.round_topic['argument_title']}\n\t- Topic Description: {self.round_topic['description']}\n\n"
+
+        # convo_history = f"Debate Topic Information:\n\t- Topic: {self.round_topic['argument_title']}\n\t- Topic Description: {self.round_topic['description']}\n\n"
 
         # each paper presents their arguments
-        convo_history += "Debate History:\n\n"
+        convo_history = "Debate History:\n\n"
         for author in paper_authors:
             print(f"\nPRESENT ARGUMENT FOR AUTHOR {author.id}:\n")
             author_arg = author.present_argument(debate_node=self, parent_debate_node=self.parent)
@@ -111,7 +114,7 @@ class DebateNode:
             print(f"\nRESPOND ARGUMENT FOR AUTHOR {author.id}:\n")
             author_history = convo_history.replace(f'Author {author.id}:', "You:").replace(f'Author {1-author.id}:', "Opposition:")
             
-            author_response = author.respond_to_argument(author_history, parent_debate_node=self.parent)
+            author_response = author.respond_to_argument(author_history, debate_node=self)
             self.response[author.id] = author_response
             convo_history += f"\t-Author {author.id}: {author_response['author_response']}\n"
 
@@ -120,7 +123,7 @@ class DebateNode:
         for author in paper_authors:
             print(f"\nREVISE ARGUMENT FOR AUTHOR {author.id}:\n")
             author_history = convo_history.replace(f'Author {author.id}:', "You:").replace(f'Author {1-author.id}:', "Opposition:")
-            author_revision = author.revise_argument(author_history, parent_debate_node=self.parent)
+            author_revision = author.revise_argument(author_history, debate_node=self, parent_debate_node=self.parent)
             self.final_arguments[author.id] = author_revision
             convo_history += f"\t-Author {author.id}: I argue that {author_revision['revised_argument_title'].lower()}. {author_revision['revised_argument_description']}\n"
 
