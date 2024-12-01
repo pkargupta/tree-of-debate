@@ -1,4 +1,4 @@
-*.json
+data.json
 .cache/*
 *.pkl
 __pycache__/*
