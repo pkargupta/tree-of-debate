@@ -7,6 +7,9 @@ from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
 from debate import DebateNode
 
+class summary_schema(BaseModel):
+    summary: Annotated[str, StringConstraints(strip_whitespace=True)]
+
 class expansion_schema(BaseModel):
     explanation: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5)]
     is_expand: bool
@@ -57,3 +60,31 @@ Output your argument in the following JSON format:
         outputs = json.loads(outputs)
 
         return outputs['is_expand']
+
+    def summarize_debate(self, conversation_history, similarities, differences):
+        similarities = ",".join(similarities)
+        differences = ",".join(differences)
+
+        logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor],min_tokens=50)
+
+        prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. Below, you are given the \"conversation_history\" between the authors, and the specific similarities and differences. The similarities and differences are from the point-of-view of Author 0.
+
+\"conversation_history\":\n{conversation_history}
+
+\"similarities\": {similarities}
+
+\"differences\": {differences}
+
+Your task is to write a synthesis of the debate that summarizes the similarities and differences between the papers. Focus more on the differences than the similarities. Format the output as a schema:
+    {{
+        "summary": <5-10 sentence string to summarize the similarities and differences between the two papesr>
+    }}
+"""
+        # conversation = history.extend(conversation)
+        outputs = unidecode(self.model.generate(prompt,
+                    sampling_params=sampling_params,
+                    use_tqdm=False)[0].outputs[0].text)
+        log_llm(prompt, outputs)
+        outputs = json.loads(outputs)['summary']
+        return outputs
