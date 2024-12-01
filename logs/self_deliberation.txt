@@ -5,19 +5,19 @@ Topic: {'argument_title': 'helping students fix their errors', 'description': 'h
 Gather Evidence:
 
 True paper:
-0.74969881772995 - In their "Help Fix Code" and "Question from Code" modules, the Instructor provides single-turn responses to the Student for answering questions, explaining concepts, and helping to write code. However, these modules direct the Student towards where their mistake is and uses natural language to describe the bug fixes
-0.7473180890083313 - The Instructor guides the Student to generate a list of all bug fixes based on their interactions with the Instructor. The overall goal is for the Student to resolve their own conceptual and syntactical errors in a Socratic fashion to reach the correct code
-0.743821918964386 - First, we use the Socratic Debugging Benchmark dataset from (Al-Hossami et al., 2023b), which consists of 149 problemseach with a problem statement, student buggy code, bug fixes and descriptions in English, and correct code. However, these problems lack sufficient difficulty, often requiring small fixes and minimal problem comprehension
-0.7423090934753418 - Suppose the student is missing a base case and incorrectly calling the recursive function. Solving one bug requires adequate understanding of the other, thereby making it easier to solve
-0.7416804432868958 - We traverse the space using Socratic questions and trace which variables have been resolved, grounded based on the Student's responses. While existing LLM-based tutors are effective in fixing the Student's code with high success, they are either prone to directly revealing code answers or cannot be adapted to new Student responses
+0.7496970295906067 - In their "Help Fix Code" and "Question from Code" modules, the Instructor provides single-turn responses to the Student for answering questions, explaining concepts, and helping to write code. However, these modules direct the Student towards where their mistake is and uses natural language to describe the bug fixes
+0.7473284602165222 - The Instructor guides the Student to generate a list of all bug fixes based on their interactions with the Instructor. The overall goal is for the Student to resolve their own conceptual and syntactical errors in a Socratic fashion to reach the correct code
+0.7438055872917175 - First, we use the Socratic Debugging Benchmark dataset from (Al-Hossami et al., 2023b), which consists of 149 problemseach with a problem statement, student buggy code, bug fixes and descriptions in English, and correct code. However, these problems lack sufficient difficulty, often requiring small fixes and minimal problem comprehension
+0.7423149943351746 - Suppose the student is missing a base case and incorrectly calling the recursive function. Solving one bug requires adequate understanding of the other, thereby making it easier to solve
+0.7416437268257141 - We traverse the space using Socratic questions and trace which variables have been resolved, grounded based on the Student's responses. While existing LLM-based tutors are effective in fixing the Student's code with high success, they are either prone to directly revealing code answers or cannot be adapted to new Student responses
 
 Develop Arguments:
 
 True paper:
-Argument #1 - Guiding Students to Resolve Errors Socratically.
-	Our approach guides students to generate a list of bug fixes and resolve errors through Socratic questioning, enabling them to understand and correct their mistakes independently. This method helps students develop problem-solving skills and conceptual understanding.
-Argument #2 - Contextualizing Error Fixes through Interconnected Bug Resolution.
-	Our approach recognizes the interconnectedness of errors, making it easier for students to solve one bug by understanding the relationship with another, thereby facilitating a more comprehensive error-fixing process.
+Argument #1 - Guiding students to resolve errors through Socratic questioning.
+	Our approach helps students fix errors by guiding them to resolve their own errors through Socratic questioning, which enables them to develop a deeper understanding of the material. This is evident in the way the Instructor provides single-turn responses to the Student, directing them towards where their mistake is and using natural language to describe the bug fixes, allowing the Student to learn from their mistakes and develop problem-solving skills.
+Argument #2 - Adapting to student responses and providing tailored feedback.
+	Our approach is able to adapt to new student responses and provide tailored feedback, which is not possible with existing LLM-based tutors that are prone to directly revealing code answers or cannot be adapted to new student responses. This is evident in the way we traverse the space using Socratic questions and trace which variables have been resolved, grounded based on the student's responses.
 
 
 Topic: {'argument_title': 'helping students fix their errors', 'description': 'helping students fix their errors'}
@@ -25,27 +25,27 @@ Topic: {'argument_title': 'helping students fix their errors', 'description': 'h
 Gather Evidence:
 
 False paper:
-0.7859837412834167 - Due to growing demand, many platforms employ novice tutors who, unlike experienced educators, struggle to address student mistakes and thus fail to seize prime learning opportunities. Our work explores the potential of large language models (LLMs) to close the novice-expert knowledge gap in remediating math mistakes
-0.7753070592880249 - Our approach intends to support novices who are not necessarily content experts. Therefore we define "error" as a student's degree of understanding, which aligns with literature on math curriculum design and psychometrics that maintain continuous scales of student understanding (Gagne, 1962, 1968; White, 1973; Resnick et al., 1973; Glaser and Nitko, 1970; Vygotsky and Cole, 1978; Wertsch, 1985; Embretson and Reise, 2013)
-0.7685800790786743 - Novices and LLMs alone use passive remediation language and do not engage with the student's error traces. Our findings indicate promising avenues for scaling high-quality tutoring with expert-guided decision-making
-0.7539766430854797 - This resulted in Step A: Infer the student's error to answer the first question. Experts used several techniques to engage with the student's error, such as asking questions and simplifying the problem to meet the student's level of understanding
-0.7357894778251648 - rpA]LC.sc[v.:viXra Bridging the Novice-Expert Gap via Models of Decision-Making: A Case Study on Remediating Math Mistakes Rose E. Wang Qingyang Zhang Carly Robinson Susanna Loeb Dorottya Demszky Stanford University rewang@cs.stanford.edu, ddemszky@stanford.edu Abstract Scaling high-quality tutoring remains a major challenge in education
+0.7860050797462463 - Due to growing demand, many platforms employ novice tutors who, unlike experienced educators, struggle to address student mistakes and thus fail to seize prime learning opportunities. Our work explores the potential of large language models (LLMs) to close the novice-expert knowledge gap in remediating math mistakes
+0.7753419876098633 - Our approach intends to support novices who are not necessarily content experts. Therefore we define "error" as a student's degree of understanding, which aligns with literature on math curriculum design and psychometrics that maintain continuous scales of student understanding (Gagne, 1962, 1968; White, 1973; Resnick et al., 1973; Glaser and Nitko, 1970; Vygotsky and Cole, 1978; Wertsch, 1985; Embretson and Reise, 2013)
+0.7685668468475342 - Novices and LLMs alone use passive remediation language and do not engage with the student's error traces. Our findings indicate promising avenues for scaling high-quality tutoring with expert-guided decision-making
+0.7539541721343994 - This resulted in Step A: Infer the student's error to answer the first question. Experts used several techniques to engage with the student's error, such as asking questions and simplifying the problem to meet the student's level of understanding
+0.7358027696609497 - As such, our error categories are topic-agnostic descriptions of a student's understanding, and complement the topic-agnostic strategies in Step B. The categories are: guess: The student does not seem to understand or guessed the answer; misinterpret: The student misinterpreted the question; careless: The student made a careless mistake; right-idea: The student has the right idea, but is not quite there1; imprecise: The student's answer is not precise enough or the tutor is being too picky about the form of the student's answer; not-sure: Not sure, but I'm going to try to diagnose the student (used sparingly); N/A: None of the above (used sparingly)
 
 Develop Arguments:
 
 False paper:
-Argument #1 - Addressing Novice Tutor Knowledge Gap.
-	Our work explores the potential of large language models to close the novice-expert knowledge gap in remediating math mistakes, thus helping students fix their errors. This is particularly important due to the growing demand for online tutoring platforms that often employ novice tutors.
-Argument #2 - Engaging Error Remediation Techniques.
-	Experts in our study used several techniques to engage with the student's error, such as asking questions and simplifying the problem to meet the student's level of understanding, providing a more effective approach to helping students fix their errors.
+Argument #1 - Expert-guided decision-making improves novice tutors.
+	Our approach leverages large language models to close the novice-expert knowledge gap. By employing expert-guided decision-making, novice tutors can seize prime learning opportunities and address student mistakes effectively, ultimately helping students fix their errors.
+Argument #2 - Novice tutors can be supported with topic-agnostic error categories.
+	Our research defines error as a student's degree of understanding, using topic-agnostic descriptions of a student's understanding, which complements topic-agnostic strategies, and helps novice tutors to identify and address student mistakes.
 
 
 Preemption:
 
 True paper:
 	0
-		Preemptive Arg #1: Addressing Novice Tutor Knowledge Gap: Our work explores the potential of large language models to close the novice-expert knowledge gap in remediating math mistakes, thus helping students fix their errors. This is particularly important due to the growing demand for online tutoring platforms that often employ novice tutors.
-		Preemptive Arg #2: Engaging Error Remediation Techniques: Experts in our study used several techniques to engage with the student's error, such as asking questions and simplifying the problem to meet the student's level of understanding, providing a more effective approach to helping students fix their errors.
+		Preemptive Arg #1: Expert-guided decision-making improves novice tutors: Our approach leverages large language models to close the novice-expert knowledge gap. By employing expert-guided decision-making, novice tutors can seize prime learning opportunities and address student mistakes effectively, ultimately helping students fix their errors.
+		Preemptive Arg #2: Novice tutors can be supported with topic-agnostic error categories: Our research defines error as a student's degree of understanding, using topic-agnostic descriptions of a student's understanding, which complements topic-agnostic strategies, and helps novice tutors to identify and address student mistakes.
 
 
 
@@ -53,12 +53,12 @@ Preemption:
 
 False paper:
 	0
-		Preemptive Arg #1: Addressing Novice Tutor Knowledge Gap: Our work explores the potential of large language models to close the novice-expert knowledge gap in remediating math mistakes, thus helping students fix their errors. This is particularly important due to the growing demand for online tutoring platforms that often employ novice tutors.
-		Preemptive Arg #2: Engaging Error Remediation Techniques: Experts in our study used several techniques to engage with the student's error, such as asking questions and simplifying the problem to meet the student's level of understanding, providing a more effective approach to helping students fix their errors.
+		Preemptive Arg #1: Expert-guided decision-making improves novice tutors: Our approach leverages large language models to close the novice-expert knowledge gap. By employing expert-guided decision-making, novice tutors can seize prime learning opportunities and address student mistakes effectively, ultimately helping students fix their errors.
+		Preemptive Arg #2: Novice tutors can be supported with topic-agnostic error categories: Our research defines error as a student's degree of understanding, using topic-agnostic descriptions of a student's understanding, which complements topic-agnostic strategies, and helps novice tutors to identify and address student mistakes.
 
 	1
-		Preemptive Arg #1: Guiding Students to Resolve Errors Socratically: Our approach guides students to generate a list of bug fixes and resolve errors through Socratic questioning, enabling them to understand and correct their mistakes independently. This method helps students develop problem-solving skills and conceptual understanding.
-		Preemptive Arg #2: Contextualizing Error Fixes through Interconnected Bug Resolution: Our approach recognizes the interconnectedness of errors, making it easier for students to solve one bug by understanding the relationship with another, thereby facilitating a more comprehensive error-fixing process.
+		Preemptive Arg #1: Guiding students to resolve errors through Socratic questioning: Our approach helps students fix errors by guiding them to resolve their own errors through Socratic questioning, which enables them to develop a deeper understanding of the material. This is evident in the way the Instructor provides single-turn responses to the Student, directing them towards where their mistake is and using natural language to describe the bug fixes, allowing the Student to learn from their mistakes and develop problem-solving skills.
+		Preemptive Arg #2: Adapting to student responses and providing tailored feedback: Our approach is able to adapt to new student responses and provide tailored feedback, which is not possible with existing LLM-based tutors that are prone to directly revealing code answers or cannot be adapted to new student responses. This is evident in the way we traverse the space using Socratic questions and trace which variables have been resolved, grounded based on the student's responses.
 
 
 

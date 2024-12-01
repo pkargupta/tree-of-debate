@@ -1,0 +1,16 @@
+PATHS:
+helping students fix their errors
+Guiding students to resolve errors through Socratic questioning
+	Adapting to student responses and providing tailored feedback
+Our approach adapts to new student responses through state space estimation
+		Our approach provides tailored feedback through dynamic tree-based questioning
+Our approach provides a more structured approach to multi-turn conversational feedback
+Our approach enables personalized question generation through dynamic tree-based questioning
+
+
+
+
+
+
+
+The debate between Author 0 and Author 1 centered around the similarities and differences between their two papers, which focused on guiding students to resolve errors through Socratic questioning and adapting to student responses. One of the main points of contention was the novelty of their approaches, with Author 0 claiming that their paper introduced a unique combination of Socratic questioning and expert-guided decision-making, while Author 1 argued that their approach was not novel. Author 0 emphasized that their paper's use of a multi-bug dataset and expert-annotated bug fixes provided a more challenging and realistic testing ground for their approach, while Author 1 countered that their approach was more effective in bridging the knowledge gap between novice and expert tutors. Another difference between the papers was the approach to providing tailored feedback, with Author 0's paper using a dynamic tree-based questioning approach and Author 1's paper using an expert-guided human-LLM approach. Author 0 argued that their approach was more structured and scalable than Author 1's, while Author 1 countered that their approach was more effective in generating effective responses. Overall, the debate highlighted the differences between the two papers, with Author 0 emphasizing the novelty and effectiveness of their approach, and Author 1 arguing that their approach was more generalizable and adaptable to different domains.

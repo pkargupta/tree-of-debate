@@ -1,3 +1,4 @@
+import pickle
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "2,3"
 from debate import DebateNode
@@ -10,6 +11,20 @@ from vllm import LLM
 import os
 import json
 from data_pairer import parse_papers
+
+def print_path(node: DebateNode, prefix=""):
+    if len(node.children) == 0:
+        return node.round_topic['argument_title']
+    
+    path = prefix + node.round_topic['argument_title'] + "\n"
+    for child in node.children:
+        path += print_path(child, prefix + "\t") + "\n"
+    
+    return path
+
+def topic_dict_to_str(topic):
+    return f"{topic['argument_title']}: {topic['description']}." # keeping this in case we want to represent topics with the title and description
+    # return topic['argument_title']
 
 def run_code(args, f_pap, c_pap):
 
@@ -39,38 +54,20 @@ def run_code(args, f_pap, c_pap):
     # each node has a topic
     root_node = DebateNode(leaf_node_label)
     subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors, log=args.log_dir) # k new, finer topics to discuss
-    # with open('logs/current_state.pkl', 'wb+') as f:
-    #     pickle.dump([root_node, subtrees], f)
-            
-    # with open('logs/current_state.pkl', 'rb') as f:
-    #     temp = pickle.load(f)
-    # root_node, subtrees = temp[0], temp[1]
-
-    """
-    TI and knowledge tracing
-    args: (1) tree and (2) sse
-
-    root: educational convos
-        root_args: tree + sse
-
-    level 1: tree || sse (2 nodes)
-        tree_args: tree is better than not
-        sse_args: sse is good
-
-    level 2: tree_is_good | tree_is_bad || sse_with_nl | sse_with_vector
-
-    """
 
     conversation_history = []
 
     queue_of_rounds: List[DebateNode] = []
     queue_of_rounds.extend(subtrees)
 
+    debated_rounds = [root_node]
+
     depth = 0
     max_depth = 2
 
     while len(queue_of_rounds) > 0:
         round = queue_of_rounds.pop(0)
+        debated_rounds.append(round)
         conversation = round.conduct_debate([focus_paper, cited_paper])
         conversation_history.extend(conversation)
         if moderator.is_expand(round) and depth < max_depth:
@@ -78,9 +75,33 @@ def run_code(args, f_pap, c_pap):
             queue_of_rounds.extend(new_subtrees)
             depth += 1
 
-    with open('logs/conversation_history.txt', 'w+') as f:
-        f.write(''.join(conversation_history))
+    conversation_history = ''.join(conversation_history)
+    with open(f'{args.log_dir}/conversation_history.txt', 'w+') as f:
+        f.write(conversation_history)
+            
+    # with open('temp.pkl', 'rb') as f:
+    #     queue_of_rounds, debated_rounds, conversation_history, root_node = pickle.load(f)
+    
+    similarities, differences = [], []
+    debated_rounds.extend(queue_of_rounds)
+    for round in debated_rounds:
+        if len(round.children) > 0:
+            similarities.append(topic_dict_to_str(round.round_topic))
+        else:
+            differences.append(topic_dict_to_str(round.round_topic))
 
+    paths = print_path(root_node)
+    with open(f'{args.log_dir}/summary.txt', 'w+') as f:
+        f.write("PATHS:\n")
+        f.write(paths)
+        f.write("\n\n\n\n\n")
+
+    summary = moderator.summarize_debate(conversation_history, similarities, differences)
+    with open(f'{args.log_dir}/summary.txt', 'a+') as f:
+        f.write(summary)
+
+    with open('temp.pkl', 'wb+') as f:
+        pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
 
 
 if __name__ == '__main__':
@@ -100,7 +121,7 @@ if __name__ == '__main__':
     with open('data.json', 'r') as file:
         data = json.load(file)
 
-    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     for item in data:
         run_code(args, item['focus'], item['cited'])
