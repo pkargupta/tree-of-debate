@@ -3,4 +3,4 @@
 *.pkl
 __pycache__/*
 *pyc
-*.out
+logs/
