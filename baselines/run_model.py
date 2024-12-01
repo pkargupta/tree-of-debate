@@ -6,6 +6,8 @@ from utils import process_arxiv,extract_sections_from_markdown
 def prompt_intro_abs(model,data):
     sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64)
     prompts = []
+    document_f = []
+    document_o = []
     for i,row in data.iterrows():
         sample = row.to_dict()
         f_pap, opp_pap, f_tit, opp_tit, topic = process_arxiv(sample['focus_paper']), process_arxiv(sample['opp_paper']), sample['title_focus'], sample['title_opp'], sample['topic']
@@ -13,6 +15,8 @@ def prompt_intro_abs(model,data):
         o_abs, o_intro = extract_sections_from_markdown(opp_pap,'Introduction'), extract_sections_from_markdown(opp_pap,'Introduction')
         prompt = f'You are an helpful assistant. Given abstract and intros of two papers, write a finegrained comparative summary. <paper1> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </paper1> <paper2> Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro} </paper2>'
         prompts.append(prompt)
+        document_f.append(f'Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro}')
+        document_o.append(f'Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro}')
 
     summaries = model.generate(prompts,
                     sampling_params=sampling_params,
@@ -20,13 +24,15 @@ def prompt_intro_abs(model,data):
     res = []
     for i in summaries:
         res.append(i.outputs[0].text)
-    return res
+    return res,document_f,document_o
 
 
 def split_posthoc(model,data):
     sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64)
     prompts_pap1 = []
     prompts_pap2 = []
+    document_f = []
+    document_o = []
     for i,row in data.iterrows():
         sample = row.to_dict()
         f_pap, opp_pap, f_tit, opp_tit, topic = process_arxiv(sample['focus_paper']), process_arxiv(sample['opp_paper']), sample['title_focus'], sample['title_opp'], sample['topic']
@@ -34,8 +40,10 @@ def split_posthoc(model,data):
         o_abs, o_intro = extract_sections_from_markdown(opp_pap,'Introduction'), extract_sections_from_markdown(opp_pap,'Introduction')
         f_prompt = f'You are an helpful assistant. Given abstract and intros, write a finegrained summary detailing key contributions, innovations and any other criteria you may find fit. <paper> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </paper>'
         prompts_pap1.append(f_prompt)
+        document_f.append(f'Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro}')
         o_prompt = f'You are an helpful assistant. Given abstract and intros, write a finegrained summary detailing key contributions, innovations and any other criteria you may find fit. <paper> Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro} </paper>'
         prompts_pap2.append(o_prompt)
+        document_o.append(f'Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro}')
     f_summaries = model.generate(prompts_pap1,
                     sampling_params=sampling_params,
                     use_tqdm=True)
@@ -60,14 +68,13 @@ def split_posthoc(model,data):
     for i in comp_summaries:
         c_res.append(i.outputs[0].text)
         
-    return c_res
+    return c_res,document_f,document_o
 
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_path", default="data.csv")
-    parser.add_argument("--output_base_dir", default="outputs_baselines/")
     parser.add_argument("--base_llm", default="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF")
     parser.add_argument("--baseline_type", default="prompt_intro")
     args = parser.parse_args()
@@ -80,8 +87,11 @@ if __name__ == '__main__':
         results = prompt_intro_abs(model_server,data)
     elif args.baseline_type=="split":
         results = split_posthoc(model_server,data)
-    print(len(results))
-    data['summary'] = results
+    # print(len(results))
+    data['summary'] = results[0]
+    data['document_f'] = results[1]
+    data['document_o'] = results[2]
+
     data.to_csv(f'results_{args.baseline_type}.csv', index=False)
             # outputs = split_posthoc()
         

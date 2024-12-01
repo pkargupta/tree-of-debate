@@ -4,5 +4,6 @@ export HF_DATASETS_CACHE="/work/nvme/bcaq/shivama2/hf_cache_rlhf/"
 
 export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO! 
 
-python main.py
+python run.py --results_path /work/nvme/bcaq/shivama2/new_tod/tree-of-debate/baselines/data.csv
+python run.py --results_path /work/nvme/bcaq/shivama2/new_tod/tree-of-debate/baselines/data.csv
 
