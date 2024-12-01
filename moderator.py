@@ -86,6 +86,6 @@ Your task is to write a synthesis of the debate that summarizes the similarities
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        log_llm(prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)['summary']
         return outputs
