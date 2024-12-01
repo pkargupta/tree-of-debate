@@ -6,16 +6,18 @@ from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
 from outlines.serve.vllm import JSONLogitsProcessor
 
+class string_schema(BaseModel):
+    author_response: Annotated[str, StringConstraints(strip_whitespace=True)]
 
 class summary_schema(BaseModel):
-    similarities: conlist(Annotated[str, StringConstraints(strip_whitespace=True)], min_length=1,max_length=10)
-    differences: conlist(Annotated[str, StringConstraints(strip_whitespace=True)], min_length=1,max_length=10)
+    similarities: conlist(string_schema, min_length=1,max_length=10) #Annotated[str, StringConstraints(strip_whitespace=True)]#
+    differences: conlist(string_schema, min_length=1,max_length=10) #Annotated[str, StringConstraints(strip_whitespace=True)]#
     conclusion: Annotated[str, StringConstraints(strip_whitespace=True)]
 
 
 def prompt_intro_abs(model,data):
     logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=model.llm_engine)
-    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64,logits_processor=[logits_processor])
+    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64,logits_processors=[logits_processor])
     prompts = []
     document_f = []
     document_o = []
@@ -24,9 +26,9 @@ def prompt_intro_abs(model,data):
         f_pap, opp_pap, f_tit, opp_tit, topic = process_arxiv(sample['focus_paper']), process_arxiv(sample['opp_paper']), sample['title_focus'], sample['title_opp'], sample['topic']
         f_abs, f_intro = extract_sections_from_markdown(f_pap,'Abstract'), extract_sections_from_markdown(f_pap,'Introduction')
         o_abs, o_intro = extract_sections_from_markdown(opp_pap,'Introduction'), extract_sections_from_markdown(opp_pap,'Introduction')
-        prompt = f"""You are an helpful assistant. Given abstract and intros of two papers, write a finegrained comparative summary. <paper1> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </paper1> <paper2> Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro} </paper2>. Write a comparative summary between the papers with similarities, differences and conclusion. If there are no similarities or differences, mention it in the respective section. Format the output as the following schema: {{
-            "similarities": <should be a list of strings where the values are the similarities between the papers>,
-            "differences": <should be a list of strings where the values are the differences between the papers>
+        prompt = f"""You are an helpful assistant. Given abstract and intros of two papers, write a finegrained comparative summary. <paper1> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </paper1> <paper2> Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro} </paper2>. Write a comparative summary between the papers with similarities, differences and conclusion. If there are no similarities or differences, mention it in the respective section. Format the output as the following JSON schema: {{
+            "similarities": [should be a list of strings where the values are the similarities between the papers],
+            "differences": [should be a list of strings where the values are the differences between the papers],
             "conclusion": <should be a strings where the value is the overall conclusion of the comparative summary between the papers>
         }}"""
         prompts.append(prompt)
@@ -72,12 +74,12 @@ def split_posthoc(model,data):
     for i in o_summaries:
         o_res.append(i.outputs[0].text)
     logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=model.llm_engine)
-    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64, logits_processor=[logits_processor])
+    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64, logits_processors=[logits_processor])
     comp_prompts = []
     for i in range(len(o_res)):
-        comp_prompt = f"""You are an helpful assistant. Given summaries of two papers write a finegrained comparative summary. <paper1> Summary: {f_res[i]} </paper1> <paper2> Summary: {o_res[i]} </paper2>. Write a comparative summary between the papers with similarities, differences and conclusion. If there are no similarities or differences, mention it in the respective section. Format the output as the following schema: {{
-            "similarities": <should be a list of strings where the values are the similarities between the papers>,
-            "differences": <should be a list of strings where the values are the differences between the papers>
+        comp_prompt = f"""You are an helpful assistant. Given summaries of two papers write a finegrained comparative summary. <paper1> Summary: {f_res[i]} </paper1> <paper2> Summary: {o_res[i]} </paper2>. Write a comparative summary between the papers with similarities, differences and conclusion. If there are no similarities or differences, mention it in the respective section. Format the output as the following JSON schema: {{
+            "similarities": [should be a list of strings where the values are the similarities between the papers],
+            "differences": [should be a list of strings where the values are the differences between the papers>],
             "conclusion": <should be a strings where the value is the overall conclusion of the comparative summary between the papers>"""
         comp_prompts.append(comp_prompt)
     
