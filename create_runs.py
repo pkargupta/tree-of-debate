@@ -1,7 +1,7 @@
 def process(s):
-    s = s.split(' ')[0]
+    s = ''.join(s.split(' ')[:2])
     s = [x for x in s if x.isalnum()]
-    return ''.join(s)
+    return ''.join(s).lower()
 
 csv_file = "data.tsv"
 run_file = 'run.sh'

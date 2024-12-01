@@ -26,7 +26,7 @@ def prompt_intro_abs(model,data):
         f_pap, opp_pap, f_tit, opp_tit, topic = process_arxiv(sample['focus_paper']), process_arxiv(sample['opp_paper']), sample['title_focus'], sample['title_opp'], sample['topic']
         f_abs, f_intro = extract_sections_from_markdown(f_pap,'Abstract'), extract_sections_from_markdown(f_pap,'Introduction')
         o_abs, o_intro = extract_sections_from_markdown(opp_pap,'Introduction'), extract_sections_from_markdown(opp_pap,'Introduction')
-        prompt = f"""You are an helpful assistant. Given abstract and intros of two papers, write a finegrained comparative summary. <paper1> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </paper1> <paper2> Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro} </paper2>. Write a comparative summary between the papers with similarities, differences and conclusion. If there are no similarities or differences, mention it in the respective section. Format the output as the following JSON schema: {{
+        prompt = f"""You are an helpful assistant. Given abstract and intros of two papers, write a finegrained comparative summary. <author 0> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </author 0> <author 1> Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro} </author 2>. Write a comparative summary between the papers with similarities, differences and conclusion. The comparative summary should be from the point of view of contrasting author 0's contrubutions against author 1. You must try to answer which components of author 0 are novel vs overlapping with author 1. Use author 0 and author 1 to mention while mentioning any claims. If there are no similarities or differences, mention it in the respective section. Format the output as the following JSON schema: {{
             "similarities": [should be a list of strings where the values are the similarities between the papers],
             "differences": [should be a list of strings where the values are the differences between the papers],
             "conclusion": <should be a strings where the value is the overall conclusion of the comparative summary between the papers>
@@ -77,7 +77,7 @@ def split_posthoc(model,data):
     sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99,logits_processors=[logits_processor])
     comp_prompts = []
     for i in range(len(o_res)):
-        comp_prompt = f"""You are an helpful assistant. Given summaries of two papers write a finegrained comparative summary. <paper1> Summary: {f_res[i]} </paper1> <paper2> Summary: {o_res[i]} </paper2>. Write a comparative summary between the papers with similarities, differences and conclusion. If there are no similarities or differences, mention it in the respective section. Format the output as the following JSON schema: {{
+        comp_prompt = f"""You are an helpful assistant. Given summaries of two papers write a finegrained comparative summary. <paper1> Summary: {f_res[i]} </paper1> <paper2> Summary: {o_res[i]} </paper2>. Write a comparative summary between the papers with similarities, differences and conclusion. The comparative summary should be from the point of view of contrasting author 0's contrubutions against author 1. You must try to answer which components of author 0 are novel vs overlapping with author 1. Use author 0 and author 1 to mention while mentioning any claims. If there are no similarities or differences, mention it in the respective section. Format the output as the following JSON schema: {{
             "similarities": [should be a list of strings where the values are the similarities between the papers],
             "differences": [should be a list of strings where the values are the differences between the papers>],
             "conclusion": <should be a strings where the value is the overall conclusion of the comparative summary between the papers>"""
@@ -111,8 +111,8 @@ if __name__ == '__main__':
         results = split_posthoc(model_server,data)
     # print(len(results))
     data['summary'] = results[0]
-    data['document_f'] = results[1]
-    data['document_o'] = results[2]
+    data['author 0'] = results[1]
+    data['author 1'] = results[2]
 
     data.to_csv(f'results_{args.baseline_type}.csv', index=False)
             # outputs = split_posthoc()

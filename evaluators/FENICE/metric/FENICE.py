@@ -11,6 +11,7 @@ from metric.utils.utils import split_into_paragraphs, split_into_sentences_batch
 class FENICE:
     def __init__(
         self,
+        author_name,
         use_coref: bool = False,
         num_sent_per_paragraph: int = 5,
         sliding_paragraphs=True,
@@ -21,6 +22,7 @@ class FENICE:
         coreference_batch_size: int = 1,
         nli_batch_size: int = 256,
         nli_max_length: int = 1024,
+        
     ) -> None:
         self.num_sent_per_paragraph = num_sent_per_paragraph
         self.claim_extractor_batch_size = claim_extractor_batch_size
@@ -38,6 +40,7 @@ class FENICE:
         self.coref_model = (
             CoreferenceResolution(load_model=False) if use_coref else None
         )
+        self.author_name = author_name
         self.nli_max_length = nli_max_length
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -196,8 +199,8 @@ class FENICE:
 
     # cache claim extraction outputs
     def cache_claims(self, summaries):
-        claim_extractor = ClaimExtractor(
-            batch_size=self.claim_extractor_batch_size, device=self.device
+        claim_extractor = ClaimExtractor(self.author_name,
+            batch_size=self.claim_extractor_batch_size, device=self.device, 
         )
         claims_predictions = claim_extractor.process_batch(summaries)
         for summ_id, claims in enumerate(claims_predictions):

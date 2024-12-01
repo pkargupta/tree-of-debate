@@ -1,6 +1,7 @@
-*.json
+data.json
 .cache/*
 *.pkl
 __pycache__/*
 *pyc
 *.sh
+logs/
