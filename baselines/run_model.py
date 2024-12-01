@@ -10,14 +10,14 @@ class string_schema(BaseModel):
     author_response: Annotated[str, StringConstraints(strip_whitespace=True)]
 
 class summary_schema(BaseModel):
-    similarities: conlist(string_schema, min_length=1,max_length=10) #Annotated[str, StringConstraints(strip_whitespace=True)]#
-    differences: conlist(string_schema, min_length=1,max_length=10) #Annotated[str, StringConstraints(strip_whitespace=True)]#
+    similarities: conlist(Annotated[str, StringConstraints(strip_whitespace=True)], min_length=1,max_length=10) #Annotated[str, StringConstraints(strip_whitespace=True)]#
+    differences: conlist(Annotated[str, StringConstraints(strip_whitespace=True)], min_length=1,max_length=10) #Annotated[str, StringConstraints(strip_whitespace=True)]#
     conclusion: Annotated[str, StringConstraints(strip_whitespace=True)]
 
 
 def prompt_intro_abs(model,data):
     logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=model.llm_engine)
-    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64,logits_processors=[logits_processor])
+    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99,logits_processors=[logits_processor])
     prompts = []
     document_f = []
     document_o = []
@@ -45,7 +45,7 @@ def prompt_intro_abs(model,data):
 
 
 def split_posthoc(model,data):
-    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64)
+    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99)
     prompts_pap1 = []
     prompts_pap2 = []
     document_f = []
@@ -74,7 +74,7 @@ def split_posthoc(model,data):
     for i in o_summaries:
         o_res.append(i.outputs[0].text)
     logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=model.llm_engine)
-    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64, logits_processors=[logits_processor])
+    sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99,logits_processors=[logits_processor])
     comp_prompts = []
     for i in range(len(o_res)):
         comp_prompt = f"""You are an helpful assistant. Given summaries of two papers write a finegrained comparative summary. <paper1> Summary: {f_res[i]} </paper1> <paper2> Summary: {o_res[i]} </paper2>. Write a comparative summary between the papers with similarities, differences and conclusion. If there are no similarities or differences, mention it in the respective section. Format the output as the following JSON schema: {{
