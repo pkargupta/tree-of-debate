@@ -8,7 +8,7 @@ from typing_extensions import Annotated
 from debate import DebateNode
 
 class expansion_schema(BaseModel):
-    explanation: Annotated[str, StringConstraints(strip_whitespace=True)]
+    explanation: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5)]
     is_expand: bool
 
 def arg_dict_to_str(args, arg_type=True):
@@ -32,7 +32,7 @@ class Moderator:
         prev_args = arg_dict_to_str(round.init_arguments, True)
         new_args = arg_dict_to_str(round.final_arguments, False)
         logits_processor = JSONLogitsProcessor(schema=expansion_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor],min_tokens=50)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
         prompt = f"""You are a moderator to a debate in which two scientific papers are being discussed. The topic of the debate is \"{round.round_topic}\". Below, you are given the previous set of arguments and the current set of arguments. 
 
@@ -40,14 +40,14 @@ class Moderator:
 
 \"current arguments\": {new_args}
 
-You must determine whether progress is being made. DO NOT focus on the language being used. Focus on the content of the arguments. Specifically, are these arguments sufficiently different enough to necesitate further debate? Are there new, deeper concepts being discussed between the two sets of arguments? Format the output as a schema: {{"expansion":
-                                                [
-                                                    {{
-                                                        "explanation": <2-5 sentence string to explain your reasoning about whether further debate is necessary when comparing the \"previous arguments\" and the \"current arguments\">,
-                                                        "is_expand": <Pick only one of "True" or "False" depending on the explanation above>
-                                                    }}
-                                                ]
-                                            }}"""
+You must determine whether progress is being made. DO NOT focus on the language being used. Focus on the content of the arguments. Specifically, are these arguments sufficiently different enough to necesitate further debate? Are there new, deeper concepts being discussed between the two sets of arguments?
+
+Output your argument in the following JSON format: 
+{{
+    "explanation": <2-5 sentence string to explain your reasoning about whether further debate is necessary when comparing the \"previous arguments\" and the \"current arguments\">,
+    "is_expand": <output a boolean; pick only one of "True" or "False" depending on the explanation above>
+}}
+"""
         # conversation = history.extend(conversation)
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,

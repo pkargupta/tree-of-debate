@@ -12,10 +12,13 @@ def format_args(list_arg):
         text_args += f"\t- Argument #{counter+1}. {item['argument_title']}: {item['description']}\n"
     return text_args
 
-def format_evidence(list_evi):
+def format_evidence(list_evi, ids=None):
     text_evi = ""
+    idx = 1
     for counter, item in enumerate(list_evi):
-        text_evi += f"\t- Evidence #{counter+1}. {item}\n"
+        if (ids == None) or ((counter + 1) in ids):
+            text_evi += f"\t- Evidence #{idx}. {item}\n"
+            idx += 1
     return text_evi
 
 def format_preemption(list_pre):
@@ -23,9 +26,9 @@ def format_preemption(list_pre):
     claim_no = 1
     for question, evidence_list in list_pre.items():
         mod_question = question.replace('the claim', 'the opposition\'s claim')
-        text_pre += f"\t- Opposition Claim #{claim_no}: {mod_question}\n"
+        text_pre += f"\t- Opposition Claim #{claim_no}: The opposition claims that {mod_question}\n"
         for counter, e in enumerate(evidence_list):
-            text_pre += f"\t\t- Your Counter Evidence #{counter+1}: {e}\n"
+            text_pre += f"\t\t- Your Paper's Relevant Evidence #{claim_no}.{counter+1}: In your paper, you state \"{e}\"\n"
         text_pre += f"\n"
         claim_no += 1
     return text_pre
@@ -41,8 +44,13 @@ class argument_schema(BaseModel):
 class response_schema(BaseModel):
     author_response: Annotated[str, StringConstraints(strip_whitespace=True)]
 
+class gen_argument_schema(BaseModel):
+    argument_title: Annotated[str, StringConstraints(strip_whitespace=True)]
+    description: Annotated[str, StringConstraints(strip_whitespace=True)]
+    evidence: conlist(int, min_length=1,max_length=10)
+    
 class argument_list_schema(BaseModel):
-    argument_list : conlist(argument_schema, min_length=1,max_length=10)
+    argument_list : conlist(gen_argument_schema, min_length=1,max_length=10)
 
 class relevance_schema(BaseModel):
     supports_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
@@ -87,16 +95,25 @@ class PaperAuthor:
         logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
-        # TODO: distinct prompts between focus and cited papers
-        prompt = f"You are a helpful assistant. You are an author of a paper that is trying to convince others of your paper's contributions towards {topic}."
+        if topic['argument_title'] == topic['description']:
+            # if it's the root node:
+            prompt = f"You are a helpful assistant. You are an author of a paper that is trying to convince others of your paper's contributions towards {topic['argument_title']}. "
+        else:
+            # if it's a debate node, then topic is the focus paper's claim
+            if self.focus:
+                prompt = f"You are an author of a paper that is trying to convince others that your paper's following contribution is novel:\nContribution Claim: {topic['argument_title']}.\nContribution Description: {topic['description']}"
+            else:
+                prompt = f"You are an author of a paper that is trying to convince an opposition paper that their following contribution is NOT novel:\nOpposition's Contribution Claim: {topic['argument_title']}.\nOpposition's Contribution Description: {topic['description']}"
+            
 
-        formatted_evidence = "\n".join([f'Retrieved Evidence #{idx+1}: {e}' for idx, e in enumerate(evidence)])
-        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\nBased on the evidence, output a list of {k} diverse, specific arguments on your paper's major unique contributions towards {topic}, that are all supported by the evidence (ONLY quote excerpts/phrases from the evidence, DO NOT mention the specific Evidence #). Each argument should make a unique point. Output your list of arguments in the following JSON format:
+        formatted_evidence = format_evidence(evidence)
+        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\n\nBased on the evidence, output a list of {k} diverse, specific arguments for your position that are all supported by the evidence. Each argument should have a corresponding "argument_title", which is a brief statement of your argument (e.g., Better Efficiency for Training), a "description" explaining your argument and mentioning specific excerpts from your evidence pool, and finally, a list of "evidence" IDs, which are the integers of the evidence in the input list which best support your argument. For example, if Evidence #1 and #2 best support your argument, then evidence should be [1,2] (depending on your argument, this list can have more or less than two items). Each argument should make a unique point. Output your list of arguments in the following JSON format:
 {{"argument_list":
     [
         {{
-            "argument_title": <should be a brief, 10-15 word string where the value is the argument argument_title>,
-            "description": <1-2 sentence string explaining the argument>
+            "argument_title": <should be a brief, 10-15 word string where the value is the argument_title>,
+            "description": <1-2 sentence string explaining the argument, including specific excerpts from the evidence pool>,
+            "evidence": <list of integer IDs citing which evidence from the input list best support your argument>
         }}
     ]
 }}"""
@@ -171,23 +188,23 @@ class PaperAuthor:
 
         if self.focus:
             claim = "your paper's contributions towards the topic are all novel relative to the other paper"
-            prompt = f"You are an author of a paper that is debating another author on your claim topic:\n\t- Topic: {round_topic['argument_title']}\n\t- Topic Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
-
+            prompt = f"You are an author of a paper that is debating another author (Opposition) on how your paper makes the following novel contribution:\n\t- Topic: {round_topic['argument_title']}\n\t- Topic Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
+        
         else:
-            claim = "the other paper's contributions towards the topic are not novel relative to your own paper"
-            prompt = f"You are an author of a paper that is debating another author about their claimed novelty:\n\t- Novelty Claim: {round_topic['argument_title']}\n\t- Novelty Claim Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
+            claim = "the opposition paper's contributions towards the topic are not novel relative to your own paper"
+            prompt = f"You are an author of a paper that is debating another author (Opposition) about their claimed novelty:\n\t- Opposition's Claim of Novelty: {round_topic['argument_title']}\n\t- Opposition's Description of Novelty Claim: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
             
             prompt+=f"""\n\nYou initially argued that your own paper has the following novelties:\n{format_args(parent_debate_node.self_delib[self.id])}\n\n"""
             
         prompt+= f"""You used the following evidence to support your arguments:
-{format_evidence(parent_debate_node.evidence[self.id])}
-You also have preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
+{format_evidence(parent_debate_node.evidence[self.id], round_topic['evidence'] if self.focus else None)}
+For your reference, the opposing author has the following claims of novelty, which may or may not be relevant to the debate topic (IGNORE an opposition's claim if it is irrelevant to the main debate topic). For each point, you have collected relevant evidence from your own paper:
 {format_preemption(parent_debate_node.preemption[self.id])}Given the above (your initial argument, your evidence, the opposition paper's claimed points of novelty, and your counter evidence), make an argument for a specific reason why {claim}, with respect to the topic, {round_topic['argument_title']}. 
 
 Output your argument in the following JSON format:
 
 {{
-    "argument_title": <should be a brief, 10-15 word string where the value is the argument argument_title>,
+    "argument_title": <should be a brief, 10-15 word string where the value is the argument_title>,
     "description": <2-3 sentence string explaining the argument>
 }}
 """     
@@ -199,7 +216,7 @@ Output your argument in the following JSON format:
 
         return json.loads((outputs))
 
-    def respond_to_argument(self, history, parent_debate_node, temperature=0.4, top_p=0.99):
+    def respond_to_argument(self, history, debate_node, temperature=0.4, top_p=0.99):
         """
         Respond to the paper given the current state of debate.
         """
@@ -221,13 +238,15 @@ Output your argument in the following JSON format:
         # print(f'opts_history {opts_history}')
         # history = history.replace(opts_history[-1], f'<respond_to_this>\n{opts_history}\n</respond_to_this>')
 
-        if self.focus:
-            claim = "your paper's contributions towards the \"topic\" are all novel relative to the other paper"
-            prompt = f"You are an author of a paper that is debating another author (Opposition).\n\nYour debate claim is that {claim}. Refer to the Opposition's arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments.\n\n"
+        round_topic = debate_node.round_topic
 
+        if self.focus:
+            claim = "your paper's contributions towards the topic are all novel relative to the other paper"
+            prompt = f"You are an author of a paper that is debating another author (Opposition) on how your paper makes the following novel contribution:\n\t- Topic: {round_topic['argument_title']}\n\t- Topic Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when responding to the opposition.\n\n"
+        
         else:
-            claim = "the other paper's contributions towards the \"topic\" are not novel relative to your own paper"
-            prompt = f"You are an author of a paper that is debating another author (Opposition).\n\nYour debate claim is that {claim}. Refer to the Opposition's arguments, as well as your own paper's segments as evidence when refining your arguments."
+            claim = "the opposition paper's contributions towards the topic are not novel relative to your own paper"
+            prompt = f"You are an author of a paper that is debating another author (Opposition) about their claimed novelty:\n\t- Opposition's Claim of Novelty: {round_topic['argument_title']}\n\t- Opposition's Description of Novelty Claim: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when responding to the opposition."
             
         
 #         prompt+= f"""You used the following evidence to support your arguments:
@@ -252,7 +271,7 @@ Output your argument in the following JSON format:
         log_llm(prompt, outputs)
         return json.loads(outputs)
     
-    def revise_argument(self, history, parent_debate_node, temperature=0.45, top_p=0.99):
+    def revise_argument(self, history, debate_node, parent_debate_node, temperature=0.45, top_p=0.99):
         """
         Strengthen the final argument at the debate node for a paper.
         """
@@ -260,19 +279,20 @@ Output your argument in the following JSON format:
         logits_processor = JSONLogitsProcessor(schema=revise_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=3000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
+        round_topic = debate_node.round_topic
 
         if self.focus:
-            claim = "your paper's contributions towards the \"topic\" are novel relative to the other paper"
-            prompt = f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when generating your new, revised argument.\n\n"
-
+            claim = "your paper's above contribution is novel relative to the other paper"
+            prompt = f"You are an author of a paper that is debating another author (Opposition) on how your paper makes the following novel contribution:\n\t- Topic: {round_topic['argument_title']}\n\t- Topic Description: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when generating your new, revised argument.\n\n"
+        
         else:
-            claim = "the other paper's contributions towards the \"topic\" are not novel relative to your own paper's contributions towards the \"topic\""
-            prompt = f"You are an author of a paper that is debating another author.\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when refining your arguments."
-            
+            claim = "the opposition's above contribution is not novel relative to your own paper"
+            prompt = f"You are an author of a paper that is debating another author (Opposition) about their claimed novelty:\n\t- Opposition's Claim of Novelty: {round_topic['argument_title']}\n\t- Opposition's Description of Novelty Claim: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when generating your new, revised argument."
+
         
         prompt+= f"""Use the following evidence to support your arguments:
-{format_evidence(parent_debate_node.evidence[self.id])}
-You also had preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
+{format_evidence(parent_debate_node.evidence[self.id], round_topic['evidence'] if self.focus else None)}
+For your reference, the opposing author has the following claims of novelty, which may or may not be relevant to the debate topic (IGNORE an opposition's claim if it is irrelevant to the main debate topic). For each point, you have collected relevant evidence from your own paper:
 {format_preemption(parent_debate_node.preemption[self.id])}Based on the debate history and your/your opposition's arguments and evidence, you must construct a new, stronger argument related to the \"topic\".\n\n""" + history
         
         prompt += f"""\nOutput your new, revised argument in the following JSON format:
