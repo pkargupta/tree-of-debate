@@ -1,4 +1,5 @@
 from arxiv2text import arxiv_to_text
+from docling.document_converter import DocumentConverter
 from unidecode import unidecode
 import string
 import json
@@ -47,6 +48,17 @@ def extract_text(pdf_url):
 def parse_papers(focus_url, cited_url):
     focus = extract_text(focus_url)
     cited = extract_text(cited_url)
+
+    data = []
+    data.append({'focus':focus,'cited':cited})
+
+    with open('data.json', 'w') as file:
+        json.dump(data, file)
+
+def parse_papers_docling(focus_url, cited_url):
+    converter = DocumentConverter()
+    focus = converter.convert(focus_url).document.export_to_dict()
+    cited = converter.convert(cited_url).document.export_to_dict()
 
     data = []
     data.append({'focus':focus,'cited':cited})

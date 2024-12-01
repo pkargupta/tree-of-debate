@@ -114,7 +114,7 @@ class DebateNode:
             print(f"\nRESPOND ARGUMENT FOR AUTHOR {author.id}:\n")
             author_history = convo_history.replace(f'Author {author.id}:', "You:").replace(f'Author {1-author.id}:', "Opposition:")
             
-            author_response = author.respond_to_argument(author_history, debate_node=self)
+            author_response = author.respond_to_argument(author_history, debate_node=self, parent_debate_node=self.parent)
             self.response[author.id] = author_response
             convo_history += f"\t-Author {author.id}: {author_response['author_response']}\n"
 

@@ -1,6 +1,6 @@
 import pickle
 import os
-# os.environ['CUDA_VISIBLE_DEVICES'] = "2,3"
+# os.environ['CUDA_VISIBLE_DEVICES'] = "0,1,2,3"
 from debate import DebateNode
 from paper_details import Paper
 from persona import PaperAuthor
@@ -10,7 +10,7 @@ from typing import List
 from vllm import LLM
 import os
 import json
-from data_pairer import parse_papers
+from data_pairer import parse_papers, parse_papers_
 
 def print_path(node: DebateNode, prefix=""):
     if len(node.children) == 0:
@@ -71,8 +71,8 @@ def run_code(args, f_pap, c_pap):
         round = queue_of_rounds.pop(0)
         debated_rounds.append(round)
         conversation = round.conduct_debate([focus_paper, cited_paper])
-        conversation_history.extend(conversation)
-        if moderator.is_expand(round) and depth < max_depth:
+        conversation_history.append(conversation)
+        if moderator.is_expand(round, conversation) and depth < max_depth:
             new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors)
             queue_of_rounds.extend(new_subtrees)
             depth += 1
@@ -124,7 +124,8 @@ if __name__ == '__main__':
     with open('data.json', 'r') as file:
         data = json.load(file)
 
-    model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     for item in data:
         run_code(args, item['focus'], item['cited'])
