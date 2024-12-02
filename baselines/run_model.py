@@ -128,9 +128,9 @@ if __name__ == '__main__':
     print(f"Data written to {output_path}")
 
     # print(len(results))
-    # data['summary'] = results[0]
-    # data['author 0'] = results[1]
-    # data['author 1'] = results[2]
+    data['summary'] = results[0]
+    data['author 0'] = results[1]
+    data['author 1'] = results[2]
 
     # data.to_csv(f'results_{args.baseline_type}.tsv', sep='\t', index=False)
             # outputs = split_posthoc()
