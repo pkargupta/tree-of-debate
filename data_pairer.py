@@ -45,12 +45,18 @@ def extract_text(pdf_url):
     extracted_text = " ".join(extracted_text.split()) # remove unnecessary whitespace in between
     return extracted_text[:extracted_text.find("References")] # only take the text before the references section
 
-def parse_papers(focus_url, cited_url):
-    focus = extract_text(focus_url)
-    cited = extract_text(cited_url)
+def parse_papers(focus_paper, cited_paper):
+    with open(os.path.join("abstracts", focus_paper), 'r') as file:
+        focus_data = json.load(file)
+    with open(os.path.join("abstracts", cited_paper), 'r') as file:
+        cited_data = json.load(file)
+    
+    focus = extract_text(focus_data['url'])
+    cited = extract_text(cited_data['url'])
 
     data = []
-    data.append({'focus':focus,'cited':cited})
+    data.append({'focus':{'title':unidecode(focus_data['title']), 'abstract':unidecode(focus_data['abstract']), 'full_text':focus},
+                 'cited':{'title':unidecode(cited_data['title']), 'abstract':unidecode(cited_data['abstract']), 'full_text':cited}})
 
     with open('data.json', 'w') as file:
         json.dump(data, file)

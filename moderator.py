@@ -20,6 +20,16 @@ class expansion_schema(BaseModel):
     meaningful_questions: bool
     author_0_has_won: bool
 
+class subtopic_schema(BaseModel):
+    topic_title: Annotated[str, StringConstraints(strip_whitespace=True)]
+    topic_description: Annotated[str, StringConstraints(strip_whitespace=True)]
+    author_0_relevant_contributions: conlist(int, min_length=0,max_length=10)
+    author_1_relevant_contributions: conlist(int, min_length=0,max_length=10)
+    
+    
+class subtopic_list_schema(BaseModel):
+    subtopic_list : conlist(subtopic_schema, min_length=1, max_length=10)
+
 def arg_dict_to_str(args, arg_type=True):
     arguments = ""
     for i, key in enumerate(args.keys()):
@@ -30,10 +40,77 @@ def arg_dict_to_str(args, arg_type=True):
 
     return arguments.strip()
 
+def format_evidence(list_evi, author, ids=None):
+    text_evi = ""
+    idx = 1
+    for counter, item in enumerate(list_evi):
+        if (ids == None) or ((counter + 1) in ids):
+            text_evi += f"\t- Author {author.id}'s Supporting Evidence #{idx}. {item}\n"
+            idx += 1
+    return text_evi
+
+def format_preemption(author, list_pre):
+    text_pre = f"\t- Author {1-author.id}'s relevant evidence to potentially counter the novelty of this contribution:\n"
+    for e_id, e in enumerate(list_pre):
+        text_pre += f"\t\t- Author {1-author.id}'s Counter Evidence #{e_id+1}: The opposition states, \"{e}\"\n"
+    return text_pre
+
+def format_self_deliberation(debate_node, paper_authors):
+    out = ""
+    for author in paper_authors:
+        out += f"Author {author.id} Paper Title: {author.paper.title}\n"
+        out += f"Author {author.id} Paper Abstract: {author.paper.abstract}\n\n"
+
+        for no, arg in enumerate(debate_node.self_delib[author.id]):
+            out += f"Author {author.id} Paper's Contribution #{no+1}: {arg['argument_title']}: {arg['description']}\n"
+            out += f"{format_evidence(debate_node.evidence[author.id], author, arg['evidence'])}"
+            arg_key = f"{arg['argument_title']}: {arg['description']}"
+            out += f"{format_preemption(author, debate_node.preemption[1-author.id][arg_key])}\n"
+    
+    return out
+
 class Moderator:
     def __init__(self, model, log_dir):
         self.model = model # define model - Llama 3.
         self.log_dir = log_dir
+
+    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=5):
+        topic_title = parent_topic['topic_title']
+        prompt = f"""You are a fair and balanced moderator of a debate between two authors determining their respective novel contributions towards the following topic:
+Topic: {parent_topic['topic_title']}
+Topic Description: {parent_topic['topic_title']}
+
+Here are the two papers and their claimed novel contributions with corresponding evidence:
+
+{format_self_deliberation(round, paper_authors)}
+
+Based on each of the author's claimed novelties, evidence, and counter-evidence to each other's arguments, you must determine the most meaningful, diverse set of subtopics within the parent topic, {topic_title}, which best cover the types of contributions each of the papers make. Remember that for each of your selected topics, the papers will be debating which of them makes the better contribution towards the topic. Hence, for each of your subtopics, cite the integer IDs of any relevant contributions from Author 0 (author_0_relevant_contributions) or Author 1 (author_1_relevant_contributions). At least one of these lists should be non-empty. Overall, our goal is to identify how novel Author 0's paper's contributions towards topic {topic_title} are by individually considering their contributions towards your subtopics. 
+
+Output your subtopics (up to {k}) in the following JSON format: 
+{{"subtopic_list":
+    [
+        {{
+            "topic_title": <should be a brief, 10-15 word string where the value is the title of your subtopic>,
+            "topic_description": <1-2 sentence string explaining the subtopic and what you feel would be most helpful for the papers to debate within the subtopic>,
+            "author_0_relevant_contributions": <list of integer IDs citing which contribution(s) from Author 0 would be most relevant to this subtopic; can be empty>,
+            "author_1_relevant_contributions": <list of integer IDs citing which contribution(s) from Author 1 would be most relevant to this subtopic; can be empty>
+        }},
+        ...
+    ]
+}}
+
+"""
+        logits_processor = JSONLogitsProcessor(schema=subtopic_list_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor])
+        
+        outputs = unidecode(self.model.generate(prompt,
+                    sampling_params=sampling_params,
+                    use_tqdm=False)[0].outputs[0].text)
+        
+        log_llm(self.log_dir, prompt, outputs)
+        outputs = json.loads(outputs)
+
+        return outputs['subtopic_list']
     
     def is_expand(self, round: DebateNode, history):
         """
@@ -45,8 +122,7 @@ class Moderator:
         sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
         round_topic = round.round_topic
-
-
+        
         prompt = f"""You are a moderator faciliating a debate in which a focus scientific paper (Author 0) is claiming that it makes the following novel contribution:\n\t- Topic: {round_topic['argument_title']}\n\t- Topic Description: {round_topic['description']}\n
 Author 0's claim is that its paper's contributions towards the topic are all novel relative to Author 1's paper.
 Author 1's claim is that Author 0's paper's contributions towards the topic are NOT novel relative to Author 1's own paper.
@@ -79,7 +155,6 @@ Output your argument in the following JSON format:
     "author_0_has_won": <output a boolean; pick only one of "True" or "False" depending on the history, arguments, and your explanation above>
 }}
 """
-        # conversation = history.extend(conversation)
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)

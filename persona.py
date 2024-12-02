@@ -87,7 +87,7 @@ class PaperAuthor:
             return evidence, scores
         return evidence
 
-    def generate_arguments(self, topic, evidence=False, temperature=0.3, top_p=0.99, k=4):
+    def generate_arguments(self, topic, evidence=False, temperature=0.3, top_p=0.99, k=3):
         """
         Given topic and evidence, generate k arguments. 
         If the paper is a focus paper, and the debate round is round #1, the topic should be "I am great".
@@ -96,28 +96,31 @@ class PaperAuthor:
         logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
-        if topic['argument_title'] == topic['description']:
+        prompt = f"You are the author of the paper, '{self.paper.title}'. The abstract of your work is:\n{self.paper.abstract}\n\nYou are debating another author on the novel contributions your work makes towards the following topic:\n"
+
+        if topic['topic_title'] == topic['topic_description']:
             # if it's the root node:
-            prompt = f"You are a helpful assistant. You are an author of a paper that is trying to convince others of your paper's contributions towards {topic['argument_title']}. "
+            prompt += f"{topic['topic_title']}\n"
         else:
             # if it's a debate node, then topic is the focus paper's claim
-            if self.focus:
-                prompt = f"You are an author of a paper that is trying to convince others that your paper's following contribution is novel:\nContribution Claim: {topic['argument_title']}.\nContribution Description: {topic['description']}"
-            else:
-                prompt = f"You are an author of a paper that is trying to convince an opposition paper that their following contribution is NOT novel:\nOpposition's Contribution Claim: {topic['argument_title']}.\nOpposition's Contribution Description: {topic['description']}"
-            
+            prompt += f"{topic['topic_title']}: {topic['topic_description']}\n"
 
+        
         formatted_evidence = format_evidence(evidence)
-        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\n\nBased on the evidence, output a list of 1 to {k} DIVERSE, specific arguments for your position that are all supported by the evidence. Each argument should have a corresponding "argument_title", which is a brief statement of your argument (e.g., Better Efficiency for Training), a "description" explaining your argument and mentioning specific excerpts from your evidence pool, and finally, a list of "evidence" IDs, which are the integers of the evidence in the input list which best support your argument. For example, if Evidence #1 and #2 best support your argument, then evidence should be [1,2] (depending on your argument, this list can have more or less than two items). Each argument should make a unique point. Output your list of arguments in the following JSON format:
-{{"argument_list":
-    [
-        {{
-            "argument_title": <should be a brief, 10-15 word string where the value is the argument_title>,
-            "description": <1-2 sentence string explaining the argument, including specific excerpts from the evidence pool>,
-            "evidence": <list of integer IDs citing which evidence from the input list best support your argument>
-        }}
-    ]
-}}"""
+        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\n\nBased on the evidence, output a list of 1 to {k} DIVERSE, specific arguments for your position that are all supported by the evidence. Each argument should have a corresponding "argument_title", which is a brief statement of your argument (e.g., Better Efficiency for Training), a "description" explaining your argument and mentioning specific excerpts from your evidence pool, and finally, a list of all "evidence" IDs, which are the integers of the evidence in the input list, that best support your argument. For example, if Evidence #1 and #2 best support your argument, then evidence should be [1,2] (depending on your argument, this list can have more or less than two items). Each argument should make a unique point.
+        
+Output your list of arguments in the following JSON format:
+{{
+    "argument_list":
+        [
+            {{
+                "argument_title": <should be a brief, 10-15 word string where the value is the argument_title>,
+                "description": <1-2 sentence string explaining the argument, including specific excerpts from the evidence pool>,
+                "evidence": <list of integer IDs citing which evidence from the input list best support your argument>
+            }}
+        ]
+}}
+"""
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params)[0].outputs[0].text)
         log_llm(self.log_dir, prompt, outputs)

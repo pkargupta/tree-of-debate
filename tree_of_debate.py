@@ -10,20 +10,20 @@ from typing import List
 from vllm import LLM
 import os
 import json
-from data_pairer import parse_papers, parse_papers_
+from data_pairer import parse_papers
 
 def print_path(node: DebateNode, prefix=""):
     if len(node.children) == 0:
-        return prefix + node.round_topic['argument_title']
+        return prefix + node.round_topic['topic_title']
     
-    path = prefix + node.round_topic['argument_title'] + "\n"
+    path = prefix + node.round_topic['topic_title'] + "\n"
     for child in node.children:
         path += print_path(child, prefix + "\t") + "\n"
     
     return path
 
 def topic_dict_to_str(topic):
-    return f"{topic['argument_title']}: {topic['description']}." # keeping this in case we want to represent topics with the title and description
+    return f"{topic['topic_title']}: {topic['topic_description']}." # keeping this in case we want to represent topics with the title and description
     # return topic['argument_title']
 
 def run_code(args, f_pap, c_pap):
@@ -47,7 +47,7 @@ def run_code(args, f_pap, c_pap):
     moderator = Moderator(model_server, args.log_dir)
 
     paper_authors = [focus_paper, cited_paper]
-    leaf_node_label = {'argument_title': args.topic, 'description': args.topic}
+    leaf_node_label = {'topic_title': args.topic, 'topic_description': args.topic}
 
     if args.log_dir != "":
         with open(os.path.join(args.log_dir, 'self_deliberation.txt'), 'w') as f:
@@ -55,8 +55,9 @@ def run_code(args, f_pap, c_pap):
 
     # each node has a topic
     root_node = DebateNode(leaf_node_label)
-    subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors, log=args.log_dir) # k new, finer topics to discuss
+    subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors, moderator, log=args.log_dir) # k new, finer topics to discuss
 
+    1/0
     conversation_history = []
 
     queue_of_rounds: List[DebateNode] = []
@@ -109,8 +110,8 @@ def run_code(args, f_pap, c_pap):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--focus_paper", default="https://arxiv.org/pdf/1706.03762")
-    parser.add_argument("--cited_paper", default="https://arxiv.org/pdf/1810.04805")
+    parser.add_argument("--focus_paper", default="instructnot")
+    parser.add_argument("--cited_paper", default="bridgingthe")
     parser.add_argument("--topic", default="language model architectures")
     parser.add_argument("--log_dir", default="logs")
     parser.add_argument("--download_dir", default="/")

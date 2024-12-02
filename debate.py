@@ -12,10 +12,10 @@ def collect_arguments(arguments):
     return text_args
 
 def topic_dict_to_str(topic):
-    if topic['argument_title'] == topic['description']:
-        return topic['argument_title']
+    if topic['topic_title'] == topic['topic_description']:
+        return topic['topic_title']
     else:
-        return f"{topic['argument_title']}: {topic['description']}." # keeping this in case we want to represent topics with the title and description
+        return f"{topic['topic_title']}: {topic['topic_description']}." # keeping this in case we want to represent topics with the title and description
 
 class DebateNode:
     def __init__(self, round_topic: str, parent=None) -> None:
@@ -25,6 +25,7 @@ class DebateNode:
         self.self_delib = {} # paper_id: [] (format for all below)
         self.evidence = {}
         self.preemption = {}
+        self.topics = {}
         self.init_arguments = {}
         self.response = {}
         self.final_arguments = {}
@@ -34,9 +35,9 @@ class DebateNode:
     
 
     def __repr__(self):
-        return self.round_topic['argument_title']
+        return topic_dict_to_str(self.round_topic)
 
-    def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor], log=None, num_evidence=5, num_arg=2):
+    def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor], moderator, log=None, num_evidence=5, num_arg=4):
         focus_paper = None
         for paper_author in paper_authors:
             # gather evidence
@@ -89,10 +90,12 @@ class DebateNode:
                         for j, p in enumerate(self.preemption[key]):
                             temp += f"\t\tPreemptive Arg #{j+1}: {p}\n"
                         temp += "\n"
-                    f.write(f'{paper_authors[i].focus} paper:\n{temp}\n\n')       
+                    f.write(f'{paper_authors[i].focus} paper:\n{temp}\n\n')
 
-        for child_topic in self.self_delib[focus_paper.id]:
-            self.children.append(DebateNode(child_topic, parent=self))
+        self.topics = moderator.generate_topics(round=self, parent_topic=topic, paper_authors=paper_authors)
+
+        for subtopic in self.topics:
+            self.children.append(DebateNode(subtopic, parent=self))
         return self.children
         
 
