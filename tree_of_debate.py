@@ -120,14 +120,14 @@ if __name__ == '__main__':
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    # if not os.path.exists("data.json"):
-    parse_papers(args.focus_paper, args.cited_paper)
-    with open('data.json', 'r') as file:
-        data = json.load(file)
+    # # if not os.path.exists("data.json"):
+    # parse_papers(args.focus_paper, args.cited_paper)
+    # with open('data.json', 'r') as file:
+    #     data = json.load(file)
 
-    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
-    # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
+    # model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    # # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
-    for item in data:
-        run_code(args, item['focus'], item['cited'])
+    # for item in data:
+    #     run_code(args, item['focus'], item['cited'])
 

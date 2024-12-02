@@ -24,4 +24,3 @@ focus_paper="instructnot.json" # treeinstruct
 cited_paper="bridgingthe.json" # bridge
 topic="helping students fix their errors"
 python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "helping students fix their errors"
-# notify "tod"
