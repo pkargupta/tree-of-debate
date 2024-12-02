@@ -42,8 +42,8 @@ class ClaimExtractor:
         # prompt = 
         
         for b in tqdm(batches, desc="Extracting claims..."):
-            prompts = [f"""Your task is to find claims by {self.author_name} in a summary and decontextualize those claims from the rest of the summary. Summary: {i}
-        Each string should be a context-independent claim by {self.author_name}, representing one fact. Do not include claims by other authors. For claims that are common to both authors or papers, you must include them in the list. Output the list of claims as using the following JSON schema : {{
+            prompts = [f"""Your task is to extract claims by {self.author_name} in a summary and decontextualize those claims from the rest of the summary. Summary: {i}
+        Each string should be a context-independent claim by {self.author_name}, representing one atomic fact. For claims that are common to both authors or papers, you must include them in the list. Output the list of claims as using the following JSON schema : {{
     "claims": [item 1, item 2, item 3, ...] <should be list of context independent claims by an author>
 }} """ for i in b]
             # opts = self.model.generate(prompts,
