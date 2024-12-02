@@ -27,4 +27,6 @@ for row in rows[1:]:
         f.write(f'CUDA_VISIBLE_DEVICES=2,3 python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --log_dir $log_dir --topic \"{topic}\"\n\n')
 
 with open(run_file, 'a+') as f:
+    f.write('source baselines/run.sh\n')
+with open(run_file, 'a+') as f:
     f.write('notify \"tod\"\n')

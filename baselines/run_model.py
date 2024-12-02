@@ -7,6 +7,11 @@ from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
 from outlines.serve.vllm import JSONLogitsProcessor
 
+def process(s):
+    s = ''.join(s.split(' ')[:2])
+    s = [x for x in s if x.isalnum()]
+    return ''.join(s).lower()
+
 class string_schema(BaseModel):
     author_response: Annotated[str, StringConstraints(strip_whitespace=True)]
 
@@ -102,13 +107,12 @@ def split_posthoc(model,data):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_path", default="opp_pap_data.json")
+    parser.add_argument("--dataset_path", default="./data.tsv")
     parser.add_argument("--base_llm", default="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF")
     parser.add_argument("--baseline_type", default="prompt_intro")
     args = parser.parse_args()
-    with open(args.dataset_path, 'r') as f:
-        data = json.load(f)
-    # data = pd.read_csv(args.dataset_path)
+    
+    data = pd.read_csv(args.dataset_path, sep='\t')
     sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64)
     model_server = LLM(model=args.base_llm,tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
 
@@ -128,6 +132,10 @@ if __name__ == '__main__':
     # data['author 0'] = results[1]
     # data['author 1'] = results[2]
 
-    # data.to_csv(f'results_{args.baseline_type}.csv', index=False)
+    # data.to_csv(f'results_{args.baseline_type}.tsv', sep='\t', index=False)
             # outputs = split_posthoc()
         
+    for index, row in data.iterrows():
+        shorthand = process(data['title_focus']) + "_" + process(data['title_opp'])
+        with open(f'logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
+            f.write(str(row['summary']))
