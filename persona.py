@@ -87,7 +87,7 @@ class PaperAuthor:
             return evidence, scores
         return evidence
 
-    def generate_arguments(self, topic, evidence=False, temperature=0.3, top_p=0.99, k=2):
+    def generate_arguments(self, topic, evidence=False, temperature=0.3, top_p=0.99, k=4):
         """
         Given topic and evidence, generate k arguments. 
         If the paper is a focus paper, and the debate round is round #1, the topic should be "I am great".
@@ -217,7 +217,7 @@ Output your argument in the following JSON format:
 
         return json.loads((outputs))
 
-    def respond_to_argument(self, history, debate_node, temperature=0.4, top_p=0.99):
+    def respond_to_argument(self, history, debate_node, parent_debate_node, temperature=0.4, top_p=0.99):
         """
         Respond to the paper given the current state of debate.
         """
@@ -247,20 +247,19 @@ Output your argument in the following JSON format:
         
         else:
             claim = "the opposition paper's contributions towards the topic are not novel relative to your own paper"
-            prompt = f"You are an author of a paper that is debating another author (Opposition) about their claimed novelty:\n\t- Opposition's Claim of Novelty: {round_topic['argument_title']}\n\t- Opposition's Description of Novelty Claim: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when responding to the opposition."
-            
+            prompt = f"You are an author of a paper that is debating another author (Opposition) about their claimed novelty:\n\t- Opposition's Claim of Novelty: {round_topic['argument_title']}\n\t- Opposition's Description of Novelty Claim: {round_topic['description']}\n\nYour debate claim is that {claim}. Refer to their arguments and presented evidence, as well as your own paper's segments as evidence when responding to the opposition. "
+
+        prompt+= f"""You used the following evidence to support your arguments:
+{format_evidence(parent_debate_node.evidence[self.id], round_topic['evidence'] if self.focus else None)}
+For your reference, the opposing author has the following claims of novelty, which may or may not be relevant to the debate topic (IGNORE an opposition's claim if it is irrelevant to the main debate topic). For each point, you have collected relevant evidence from your own paper:
+{format_preemption(parent_debate_node.preemption[self.id])}. """
         
-#         prompt+= f"""You used the following evidence to support your arguments:
-# {format_evidence(parent_debate_node.evidence[self.id])}
-# You also have preemptively collected some counter evidence from your own paper based on the opposing author's claimed points of novelty:
-# {format_preemption(parent_debate_node.preemption[self.id])}
-# Here is your conversation debate history with the opposition paper. Youu must respond to the last argument presented by your opposition in debate. A response may consist of an acknowledgement of the opposition's previous response, any clarifying questions based on the opposition's claims and reasoning, and any clarifications of your own presented arguments based on the opposition.\n\n""" + history
-        prompt+= f"""Here is your conversation debate history with the opposition paper. You must respond to the last argument presented by your opposition in debate (tagged between <respond_to_this> and </respond_to_this>). A response may consist of an acknowledgement of the opposition's previous response, any clarifying questions based on the opposition's claims and reasoning, and any clarifications of your own presented arguments based on the opposition.\n\n""" + history
+        prompt+= f"""Here is your conversation debate history with the opposition paper. You must respond to the last argument presented by your opposition in debate (tagged between <respond_to_this> and </respond_to_this>). A response may consist of (1) an acknowledgement of the opposition's previous response, (2) answering any of the questions about your paper brought up by the opposition, (3) asking any clarifying questions based on the opposition's claims and reasoning, (4) any clarifications of your own presented arguments based on the opposition, and (5) you feel that the opposition's claim is strong and you do not have sufficient grounds to refute it, then concede to your opposition.\n\n""" + history
         
         prompt += f"""\nOutput your new response in the following JSON format:
 
 {{
-    "author_response": <2-3 sentence string response to the opposition's last turn (tagged between <respond_to_this> and </respond_to_this>)>
+    "author_response": <2-3 sentence string response to the opposition's last turn with an explanation behind your reasoning (tagged between <respond_to_this> and </respond_to_this>)>
 }}
 """
         print(prompt + '\n\n')

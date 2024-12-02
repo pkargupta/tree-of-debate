@@ -3,4 +3,5 @@ data.json
 *.pkl
 __pycache__/*
 *pyc
+*.sh
 logs/
