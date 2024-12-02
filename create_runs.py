@@ -1,7 +1,8 @@
 def process(s):
-    s = ''.join(s.split(' ')[:2])
-    s = [x for x in s if x.isalnum()]
-    return ''.join(s).lower()
+    # s = ''.join(s.split(' ')[:2])
+    # s = [x for x in s if x.isalnum()]
+    # return ''.join(s).lower()
+    return s[s.rfind('/')+1:].replace('.', '_')
 
 csv_file = "data.tsv"
 run_file = 'run.sh'
@@ -18,7 +19,7 @@ for row in rows[1:]:
     focus_paper = cols[0]
     cited_paper = cols[1]
     topic = cols[2]
-    shorthand = process(cols[3]) + "_" + process(cols[4])
+    shorthand = process(cols[0]) + "-" + process(cols[1])
 
     with open(run_file, 'a+') as f:
         f.write(f'focus_paper=\"{focus_paper}\"\n')
@@ -27,6 +28,6 @@ for row in rows[1:]:
         f.write(f'CUDA_VISIBLE_DEVICES=2,3 python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --log_dir $log_dir --topic \"{topic}\"\n\n')
 
 with open(run_file, 'a+') as f:
-    f.write('source baselines/run.sh\n')
+    f.write('cd baselines\nsource run.sh\n')
 with open(run_file, 'a+') as f:
     f.write('notify \"tod\"\n')

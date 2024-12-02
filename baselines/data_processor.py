@@ -3,7 +3,8 @@ from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 import json  # To save opp_pap to disk
 from utils import process_arxiv, extract_sections_from_markdown
-
+import os
+os.environ['CUDA_VISIBLE_DEVICES']=0,1
 def process_row(row):
     """
     Process a single row and return the processed data as a dictionary.
@@ -51,8 +52,54 @@ def main():
         json.dump(processed_data, f, indent=4)
     print(f"Data written to {output_path}")
 
+def combine_sheets():
+    file = 'baseline_data.tsv'
+
+    # Load the TSV file
+    input_file = "../data.tsv"
+    data = pd.read_csv(input_file, sep="\t")
+
+    # Folder containing abstracts
+    abstract_folder = "../abstracts"
+
+    # Function to extract abstract and introduction from a JSON file
+    def extract_abstract_intro(arxiv_id):
+        file_name = arxiv_id.replace(".", "_") + ".json"
+        file_path = os.path.join(abstract_folder, file_name)
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                content = json.load(f)
+            return content.get("abstract", ""), content.get("introduction", "")
+        else:
+            return "", ""  # Return empty strings if the file is missing
+
+    # Process the data
+    output_data = []
+    for _, row in data.iterrows():
+        focus_paper_id = row["focus_paper"].split("/")[-1].replace(".", "_")
+        opp_paper_id = row["opp_paper"].split("/")[-1].replace(".", "_")
+        
+        # Extract abstracts and introductions
+        f_abstract, f_intro = extract_abstract_intro(focus_paper_id)
+        o_abstract, o_intro = extract_abstract_intro(opp_paper_id)
+        
+        # Append data to output list
+        output_data.append([
+            f_abstract, f_intro, row["title_focus"],
+            o_abstract, o_intro, row["title_opp"], row["topic"]
+        ])
+
+    # Save to a new TSV file
+    output_df = pd.DataFrame(output_data, columns=[
+        "f_abstract", "f_intro", "title_focus", 
+        "o_abstract", "o_intro", "title_opp", "topic"
+    ])
+    output_df.to_csv(file, sep="\t", index=False)
+
 if __name__ == "__main__":
-    main()
+    # main()
+    combine_sheets()
+    
 
 
 # import pandas as pd

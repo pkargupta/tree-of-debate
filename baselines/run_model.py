@@ -8,9 +8,10 @@ from typing_extensions import Annotated
 from outlines.serve.vllm import JSONLogitsProcessor
 
 def process(s):
-    s = ''.join(s.split(' ')[:2])
-    s = [x for x in s if x.isalnum()]
-    return ''.join(s).lower()
+    # s = ''.join(s.split(' ')[:2])
+    # s = [x for x in s if x.isalnum()]
+    # return ''.join(s).lower()
+    return s[s.rfind('/')+1:].replace('.', '_')
 
 class string_schema(BaseModel):
     author_response: Annotated[str, StringConstraints(strip_whitespace=True)]
@@ -60,6 +61,7 @@ def split_posthoc(model,data):
     # document_f = []
     # document_o = []
     for i,sample in enumerate(data):
+        sample = data.iloc[i]
         f_abs, f_intro, f_tit, o_abs, o_intro, opp_tit, topic = sample['f_abstract'], sample['f_intro'], sample['title_focus'], sample['o_abstract'], sample['o_intro'], sample['title_opp'], sample['topic']
         f_prompt = f'You are an helpful assistant. Given abstract and intros, write a finegrained summary related to topic {topic} detailing key contributions, innovations and any other criteria you may find fit. <paper> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </paper>'
         prompts_pap1.append(f_prompt)
@@ -93,8 +95,16 @@ def split_posthoc(model,data):
                     sampling_params=sampling_params,
                     use_tqdm=True)
     
-    for i,sample in enumerate(data):
-        sample['split_posthoc'] = comp_summaries[i].outputs[0].text
+    # for i,sample in enumerate(data):
+    #     sample['split_posthoc'] = comp_summaries[i].outputs[0].text
+    comp_summaries = [json.loads(comp_summaries[i].outputs[0].text) for i in range(len(comp_summaries))]
+    similarities = [row['similarities'] for row in comp_summaries]
+    differences = [row['differences'] for row in comp_summaries]
+    conclusion = [row['conclusion'] for row in comp_summaries]
+
+    data['similarities'] = similarities
+    data['differences'] = differences
+    data['conclusion'] = conclusion
     return data
     
     # c_res = []
@@ -107,14 +117,14 @@ def split_posthoc(model,data):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset_path", default="./data.tsv")
+    parser.add_argument("--dataset_path", default="baseline_data.tsv")
     parser.add_argument("--base_llm", default="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF")
     parser.add_argument("--baseline_type", default="prompt_intro")
     args = parser.parse_args()
     
     data = pd.read_csv(args.dataset_path, sep='\t')
     sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64)
-    model_server = LLM(model=args.base_llm,tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model=args.base_llm,tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     if args.baseline_type=="prompt_intro":
         results = prompt_intro_abs(model_server,data)
@@ -127,15 +137,15 @@ if __name__ == '__main__':
     
     print(f"Data written to {output_path}")
 
-    # print(len(results))
-    data['summary'] = results[0]
-    data['author 0'] = results[1]
-    data['author 1'] = results[2]
+    # # print(len(results))
+    # data['summary'] = results[0]
+    # data['author 0'] = results[1]
+    # data['author 1'] = results[2]
 
     # data.to_csv(f'results_{args.baseline_type}.tsv', sep='\t', index=False)
             # outputs = split_posthoc()
         
     for index, row in data.iterrows():
-        shorthand = process(data['title_focus']) + "_" + process(data['title_opp'])
+        shorthand = process(data['focus_paper']) + "-" + process(data['opp_paper'])
         with open(f'logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
-            f.write(str(row['summary']))
+            f.write(str(row['conclusion']))
