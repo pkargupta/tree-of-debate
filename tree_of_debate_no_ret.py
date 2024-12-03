@@ -37,7 +37,7 @@ def run_code(args, f_pap, c_pap):
         focus=True,
         id=0,
         log_dir=args.log_dir,
-        is_retrieval=True
+        is_retrieval=False
     )
 
     cited_paper = PaperAuthor(
@@ -46,7 +46,7 @@ def run_code(args, f_pap, c_pap):
         focus=False,
         id=1,
         log_dir=args.log_dir,
-        is_retrieval=True
+        is_retrieval=False
     )
 
     moderator = Moderator(model_server, args.log_dir)
@@ -99,7 +99,7 @@ def run_code(args, f_pap, c_pap):
         f.write(summary)
 
     paths = print_path(root_node)
-    with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:
+    with open(f'{args.log_dir}/summary.txt', 'a+') as f:
         f.write("\n\n\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         os.mkdir(args.log_dir)
 
     args.log_dir = f"{args.log_dir}/{args.focus_paper}-{args.cited_paper}"
-    if os.path.exists(os.path.join(args.log_dir, "summary_tod.txt")):
+    if os.path.exists(os.path.join(args.log_dir, "summary_tod_no_ret.txt")):
         exit()
 
     if not os.path.exists(args.log_dir):

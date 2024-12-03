@@ -1,8 +1,12 @@
 import numpy as np
 import argparse
+import glob
+import os
 
 def evaluate_one(summary):
     print(' '.join(summary))
+
+    metric_logs = []
 
     metrics = {
         "fidelity": ["Does the sentence maintain fidelity to the papers wrt the facts? i.e., are the facts NOT mixed up between papers? 1 for YES, 0 for NO", 0],
@@ -12,44 +16,59 @@ def evaluate_one(summary):
 
     for i, sentence in enumerate(summary):
         print(f"Sentence {(i+1)}: {sentence}.\n")
+        row = [i]
         for metric in metrics:
             score = input(metrics[metric][0] + ": ")
             if score == "" and metric == "factual":
                 continue
             metrics[metric][1] += int(score)
+            row.append(int(score))
         print('\n\n')
+        metric_logs.append(row)
     
-    final_metrics = []
+    final_metrics = {}
     for metric in metrics:
-        final_metrics.append(metrics[metric][1]) #TODO normalize
+        final_metrics[metric] = metrics[metric][1] / len(summary)
     
     granularity_prompt = "Does the summary go deeper than the topic: {topic}?\n1. No, it doesn't take about the topic at all.\n2. No, it talks about stuff more vague than the topic.\n3. No, it talks just about the topic.\n4. Yes, but it does not go deep enough.\n5. Yes, it goes to the correct level.\nAnswer: "
-    final_metrics.append(int(input(granularity_prompt)))
+    final_metrics['granularity'] = int(input(granularity_prompt))
 
     # completion
     num_topics = int(input("How many necessary topics should the summary cover?"))
     topics_cov = int(input("How many necessary topics are covered in the summary?"))
-    final_metrics.append(float(topics_cov / num_topics))
+    final_metrics['completeness'] = float(topics_cov / num_topics)
     
-    return np.array(final_metrics)
+    return final_metrics, metric_logs
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--summary_one_file", default="logs/summary_one.txt")
-    parser.add_argument("--summary_two_file", default="logs/summary_two.txt")
-    parser.add_argument("--topic", default="there is no topic")
+    parser.add_argument("--focus_paper", default="2406_11709")
+    parser.add_argument("--cited_paper", default="2310_10648")
+    parser.add_argument("--topic", default="helping students fix their mistakes")
     args = parser.parse_args()
 
-    with open(args.summary_one_file, 'r') as f:
-        summary_one = f.read()
-    
-    with open(args.summary_two_file, 'r') as f:
-        summary_two = f.read()
-    
-    summary_one = [sent for sent in summary_one.split('.') if len(sent) > 0]
-    summary_two = [sent for sent in summary_two.split('.') if len(sent) > 0]
+    if os.path.exists('evaluation/'):
+        os.mkdir('evaluation/')
 
-    single_eval_one = evaluate_one(summary_one)
-    single_eval_two = evaluate_one(summary_two)
+    summary_files = glob.glob(f'logs/{args.focus_paper}-{args.cited_paper}/summary*.txt')
 
-    print(single_eval_one - single_eval_two)
+    for summary_file in summary_files:
+        if os.path.exists(f'evaluation/{args.focus_paper}-{args.cited_paper}/'):
+            continue
+
+        os.mkdir(f'evaluation/{args.focus_paper}-{args.cited_paper}/')
+
+        shorthand = summary_file.split('/')[-1][8:-4]
+
+        with open(summary_file, 'r') as f:
+            text = f.readline()
+        
+        text = [sent for sent in text.split('.') if len(sent) > 0]
+        final_metrics, metric_logs = evaluate_one(text)
+
+
+        with open(f'evaluation/{args.focus_paper}-{args.cited_paper}/summary_{shorthand}.txt', 'w+') as f:
+            for metric in final_metrics.keys():
+                f.write(f'{metric},{final_metrics[metric]}\n')
+            for i, row in enumerate(metric_logs):
+                f.write(f'{i},{str(row)[1:-1]}\n')

@@ -112,7 +112,8 @@ class PaperAuthor:
                 return evidence, scores
             return evidence
         else:
-            return self.paper.abstract + " " + self.paper.introduction
+            return [self.paper.abstract], [0]
+            # return [self.paper.abstract + " " + self.paper.introduction], [0]
 
     def generate_arguments(self, topic, evidence=False, temperature=0.3, top_p=0.99, k=3):
         """

@@ -4,6 +4,6 @@
 
 # export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO! 
 
-# CUDA_VISIBLE_DEVICES=0,1 python run_model.py --dataset_path baseline_data.tsv --base_llm meta-llama/Meta-Llama-3.1-8B-Instruct --baseline_type split
+CUDA_VISIBLE_DEVICES=0,1 python run_model.py --dataset_path baseline_data.tsv --base_llm meta-llama/Meta-Llama-3.1-8B-Instruct --baseline_type split
 CUDA_VISIBLE_DEVICES=0,1 python run_model.py --dataset_path baseline_data.tsv --base_llm meta-llama/Meta-Llama-3.1-8B-Instruct --baseline_type prompt_intro
 

@@ -6,6 +6,7 @@ from utils import process_arxiv,extract_sections_from_markdown
 from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
 from outlines.serve.vllm import JSONLogitsProcessor
+import os
 
 def process(s):
     # s = ''.join(s.split(' ')[:2])
@@ -158,5 +159,7 @@ if __name__ == '__main__':
         
     for index, row in data.iterrows():
         shorthand = process(row['focus_paper']) + "-" + process(row['opp_paper'])
+        if not os.path.exists(f'../logs/{shorthand}/'):
+            os.mkdir(f'../logs/{shorthand}/')
         with open(f'../logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
             f.write(str(row['conclusion']))

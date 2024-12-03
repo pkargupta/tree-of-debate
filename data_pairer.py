@@ -46,17 +46,17 @@ def extract_text(pdf_url):
     return extracted_text[:extracted_text.find("References")] # only take the text before the references section
 
 def parse_papers(focus_paper, cited_paper):
-    with open(os.path.join("abstracts", focus_paper), 'r') as file:
+    with open(os.path.join("abstracts", focus_paper + ".json"), 'r') as file:
         focus_data = json.load(file)
-    with open(os.path.join("abstracts", cited_paper), 'r') as file:
+    with open(os.path.join("abstracts", cited_paper + ".json"), 'r') as file:
         cited_data = json.load(file)
     
     focus = extract_text(f"https://arxiv.org/pdf/{focus_data['arxiv_key'].replace('_', '.')}")
     cited = extract_text(f"https://arxiv.org/pdf/{cited_data['arxiv_key'].replace('_', '.')}")
 
     data = []
-    data.append({'focus':{'title':unidecode(focus_data['title']), 'abstract':unidecode(focus_data['abstract']), 'full_text':focus},
-                 'cited':{'title':unidecode(cited_data['title']), 'abstract':unidecode(cited_data['abstract']), 'full_text':cited}})
+    data.append({'focus':{'title':unidecode(focus_data['title']), 'abstract':unidecode(focus_data['abstract']), 'introduction': unidecode(focus_data['introduction']), 'full_text':focus},
+                 'cited':{'title':unidecode(cited_data['title']), 'abstract':unidecode(cited_data['abstract']), 'introduction': unidecode(cited_data['introduction']), 'full_text':cited}})
 
     with open('data.json', 'w') as file:
         json.dump(data, file)
