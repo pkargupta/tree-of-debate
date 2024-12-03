@@ -77,7 +77,8 @@ def run_code(args, f_pap, c_pap):
         debated_rounds.append(round)
         conversation = round.conduct_debate([focus_paper, cited_paper])
         conversation_history.append(conversation)
-        if moderator.is_expand(round, conversation) and depth < max_depth:
+        is_expand = moderator.is_expand(round, conversation)
+        if is_expand and depth < max_depth:
             new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors, moderator)
             queue_of_rounds.extend(new_subtrees)
             depth += 1
@@ -95,12 +96,14 @@ def run_code(args, f_pap, c_pap):
             differences.append(topic_dict_to_str(round.round_topic))
 
     summary = moderator.summarize_debate(conversation_history, similarities, differences)
-    with open(f'{args.log_dir}/summary.txt', 'w+') as f:
+    with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
         f.write(summary)
+        f.write(similarities + "\n")
+        f.write(differences + "\n")
 
     paths = print_path(root_node)
     with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:
-        f.write("\n\n\n\n\n")
+        f.write("\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
 
@@ -110,9 +113,9 @@ def run_code(args, f_pap, c_pap):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--focus_paper", default="2406_11709")
-    parser.add_argument("--cited_paper", default="2310_10648")
-    parser.add_argument("--topic", default="helping students fix their mistakes")
+    parser.add_argument("--focus_paper", default="2305_10601")
+    parser.add_argument("--cited_paper", default="2201_11903")
+    parser.add_argument("--topic", default="enabling large language model reasoning via prompting")
     parser.add_argument("--log_dir", default="logs")
     parser.add_argument("--download_dir", default="/")
     args = parser.parse_args()
@@ -122,6 +125,7 @@ if __name__ == '__main__':
 
     args.log_dir = f"{args.log_dir}/{args.focus_paper}-{args.cited_paper}"
     if os.path.exists(os.path.join(args.log_dir, "summary_tod.txt")):
+        print('SKIPPING AS ITS DONE')
         exit()
 
     if not os.path.exists(args.log_dir):

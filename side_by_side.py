@@ -3,14 +3,14 @@ import argparse
 import glob
 import os
 
-def evaluate_one(summary):
+def evaluate_one(topic, summary, similarties, differences):
     print(' '.join(summary))
 
     metric_logs = []
 
     metrics = {
         "fidelity": ["Does the sentence maintain fidelity to the papers wrt the facts? i.e., are the facts NOT mixed up between papers? 1 for YES, 0 for NO", 0],
-        "factual": ["Are the facts present in the sentence accurate? (Enter for no fact) 2 for COMPLETELY ACCURATE, 1, 0 for COMPLETELY INACCURATE", 0],
+        # "factual": ["Are the facts present in the sentence accurate? (Enter for no fact) 2 for COMPLETELY ACCURATE, 1, 0 for COMPLETELY INACCURATE", 0],
         # "importance": ["Are the facts present in the sentence important? 1 for YES, 0 for NO", 0]
     }
 
@@ -30,13 +30,19 @@ def evaluate_one(summary):
     for metric in metrics:
         final_metrics[metric] = metrics[metric][1] / len(summary)
     
-    granularity_prompt = "Does the summary go deeper than the topic: {topic}?\n1. No, it doesn't take about the topic at all.\n2. No, it talks about stuff more vague than the topic.\n3. No, it talks just about the topic.\n4. Yes, but it does not go deep enough.\n5. Yes, it goes to the correct level.\nAnswer: "
+    granularity_prompt = f"Does the summary go deeper than the topic: {topic}?\n1. No, it doesn't take about the topic at all.\n2. No, it talks about stuff more vague than the topic.\n3. No, it talks just about the topic.\n4. Yes, but it does not go deep enough.\n5. Yes, it goes to the correct level.\nAnswer: "
     final_metrics['granularity'] = int(input(granularity_prompt))
 
     # completion
-    num_topics = int(input("How many necessary topics should the summary cover?"))
-    topics_cov = int(input("How many necessary topics are covered in the summary?"))
-    final_metrics['completeness'] = float(topics_cov / num_topics)
+    completion_prompt = "Does the summary seem comprehensive and complete?\n1. No, the summary misses (MULTIPLE) major points.\n2.No, the summary misses a (SINGULAR) major point.\n3. Somewhat, the summary misses minor points.\n4. Yes, the summary covers the major points.\nAnswer: "
+    final_metrics['completeness'] = int(input(completion_prompt))
+
+    # sim and diffs
+    similarities_prompt = f"Here are the similarities:\n{similarties}\n\nAre the similarities comprehensive?\n1. No, multiple similarities are problematic.\2. Somewhat, a singular similarity is problematic.\n3. Yes, all similarities are good.\nAnswer: "
+    final_metrics['similarity_comprehension'] = int(input(similarities_prompt))
+
+    differences_prompt = f"Here are the differences:\n{differences}\n\nAre the differences comprehensive?\n1. No, multiple differences are problematic.\2. Somewhat, a singular difference is problematic.\n3. Yes, all differences are good.\nAnswer: "
+    final_metrics['difference_comprehension'] = int(input(differences_prompt))
     
     return final_metrics, metric_logs
 
@@ -62,9 +68,11 @@ if __name__ == '__main__':
 
         with open(summary_file, 'r') as f:
             text = f.readline()
+            similarities = f.readline()
+            differences = f.readline()            
         
         text = [sent for sent in text.split('.') if len(sent) > 0]
-        final_metrics, metric_logs = evaluate_one(text)
+        final_metrics, metric_logs = evaluate_one(args.topic, text, similarities, differences)
 
 
         with open(f'evaluation/{args.focus_paper}-{args.cited_paper}/summary_{shorthand}.txt', 'w+') as f:

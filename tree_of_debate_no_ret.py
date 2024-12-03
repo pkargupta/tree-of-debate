@@ -95,12 +95,14 @@ def run_code(args, f_pap, c_pap):
             differences.append(topic_dict_to_str(round.round_topic))
 
     summary = moderator.summarize_debate(conversation_history, similarities, differences)
-    with open(f'{args.log_dir}/summary.txt', 'w+') as f:
+    with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
         f.write(summary)
+        f.write(similarities + "\n")
+        f.write(differences + "\n")
 
     paths = print_path(root_node)
-    with open(f'{args.log_dir}/summary.txt', 'a+') as f:
-        f.write("\n\n\n\n\n")
+    with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:
+        f.write("\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
 
