@@ -23,8 +23,11 @@ def print_path(node: DebateNode, prefix=""):
     return path
 
 def topic_dict_to_str(topic):
-    return f"{topic['topic_title']}: {topic['topic_description']}." # keeping this in case we want to represent topics with the title and description
-    # return topic['argument_title']
+    if topic['topic_title'] == topic['topic_description']:
+        return topic['topic_title']
+    else:
+        return f"{topic['topic_title']}: {topic['topic_description']}." # keeping this in case we want to represent topics with the title and description
+        # return topic['argument_title']
 
 def run_code(args, f_pap, c_pap):
 
@@ -57,7 +60,6 @@ def run_code(args, f_pap, c_pap):
     root_node = DebateNode(leaf_node_label)
     subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors, moderator, log=args.log_dir) # k new, finer topics to discuss
 
-    1/0
     conversation_history = []
 
     queue_of_rounds: List[DebateNode] = []
@@ -74,7 +76,7 @@ def run_code(args, f_pap, c_pap):
         conversation = round.conduct_debate([focus_paper, cited_paper])
         conversation_history.append(conversation)
         if moderator.is_expand(round, conversation) and depth < max_depth:
-            new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors)
+            new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors, moderator)
             queue_of_rounds.extend(new_subtrees)
             depth += 1
 
@@ -110,9 +112,9 @@ def run_code(args, f_pap, c_pap):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--focus_paper", default="instructnot")
-    parser.add_argument("--cited_paper", default="bridgingthe")
-    parser.add_argument("--topic", default="language model architectures")
+    parser.add_argument("--focus_paper", default="2406_11709")
+    parser.add_argument("--cited_paper", default="2310_10648")
+    parser.add_argument("--topic", default="helping students fix their mistakes")
     parser.add_argument("--log_dir", default="logs")
     parser.add_argument("--download_dir", default="/")
     args = parser.parse_args()
@@ -120,14 +122,16 @@ if __name__ == '__main__':
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    # # if not os.path.exists("data.json"):
-    # parse_papers(args.focus_paper, args.cited_paper)
-    # with open('data.json', 'r') as file:
-    #     data = json.load(file)
+    # if not os.path.exists("data.json"):
+    
+    parse_papers(args.focus_paper, args.cited_paper)
+    
+    with open('data.json', 'r') as file:
+        data = json.load(file)
 
-    # model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
-    # # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
-    # for item in data:
-    #     run_code(args, item['focus'], item['cited'])
+    for item in data:
+        run_code(args, item['focus'], item['cited'])
 

@@ -51,8 +51,8 @@ def parse_papers(focus_paper, cited_paper):
     with open(os.path.join("abstracts", cited_paper), 'r') as file:
         cited_data = json.load(file)
     
-    focus = extract_text(focus_data['url'])
-    cited = extract_text(cited_data['url'])
+    focus = extract_text(f"https://arxiv.org/pdf/{focus_data['arxiv_key'].replace('_', '.')}")
+    cited = extract_text(f"https://arxiv.org/pdf/{cited_data['arxiv_key'].replace('_', '.')}")
 
     data = []
     data.append({'focus':{'title':unidecode(focus_data['title']), 'abstract':unidecode(focus_data['abstract']), 'full_text':focus},

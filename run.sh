@@ -20,7 +20,7 @@ export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO!
 # 	}' 
 
 # rm -rf logs/*
-focus_paper="instructnot.json" # treeinstruct
-cited_paper="bridgingthe.json" # bridge
-topic="helping students fix their errors"
-python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "helping students fix their errors"
+focus_paper="2406_11709.json" # treeinstruct
+cited_paper="2310_10648.json" # bridge
+topic="helping students fix their mistakes"
+python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "$topic"

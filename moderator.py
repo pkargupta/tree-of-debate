@@ -18,7 +18,7 @@ class expansion_schema(BaseModel):
     explanation: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5)]
     progression_of_arguments: bool
     meaningful_questions: bool
-    author_0_has_won: bool
+    clear_winner: bool
 
 class subtopic_schema(BaseModel):
     topic_title: Annotated[str, StringConstraints(strip_whitespace=True)]
@@ -34,9 +34,9 @@ def arg_dict_to_str(args, arg_type=True):
     arguments = ""
     for i, key in enumerate(args.keys()):
         if arg_type:
-            arguments += f"Author {(i)}'s Initial Argument: {args[key]['argument_title']}: {args[key]['description']}. "
+            arguments += f"Author {(i)}'s Initial Argument: {args[key]['argument_title']}: {args[key]['description']}\n\n"
         else:
-            arguments += f"Author {(i)}'s Revised Argument: {args[key]['revised_argument_title']}: {args[key]['revised_argument_description']}. "
+            arguments += f"Author {(i)}'s Revised Argument: {args[key]['revised_argument_title']}: {args[key]['revised_argument_description']}\n\n"
 
     return arguments.strip()
 
@@ -74,7 +74,7 @@ class Moderator:
         self.model = model # define model - Llama 3.
         self.log_dir = log_dir
 
-    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=5):
+    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=5, temperature=0.3, top_p=0.99):
         topic_title = parent_topic['topic_title']
         prompt = f"""You are a fair and balanced moderator of a debate between two authors determining their respective novel contributions towards the following topic:
 Topic: {parent_topic['topic_title']}
@@ -101,7 +101,7 @@ Output your subtopics (up to {k}) in the following JSON format:
 
 """
         logits_processor = JSONLogitsProcessor(schema=subtopic_list_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor])
+        sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
         
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
@@ -123,13 +123,9 @@ Output your subtopics (up to {k}) in the following JSON format:
 
         round_topic = round.round_topic
         
-        prompt = f"""You are a moderator faciliating a debate in which a focus scientific paper (Author 0) is claiming that it makes the following novel contribution:\n\t- Topic: {round_topic['argument_title']}\n\t- Topic Description: {round_topic['description']}\n
-Author 0's claim is that its paper's contributions towards the topic are all novel relative to Author 1's paper.
-Author 1's claim is that Author 0's paper's contributions towards the topic are NOT novel relative to Author 1's own paper.
-
+        prompt = f"""You are a moderator faciliating a debate in which two paper are debating who makes the better contribution towards the following topic:\n\t- Topic: {round_topic['topic_title']}\n\t- Topic Description: {round_topic['topic_description']}\n
 -------
 
-Here is the debate history:
 {history}
 
 -------
@@ -145,14 +141,14 @@ Below, you are given the previous set of arguments and the current set of argume
 You must determine whether progress is being made. DO NOT focus on the language being used. Focus on the content of the arguments. Specifically, determine the following (True or False for each):
 1. progression_of_arguments: Are these arguments sufficiently different enough to necesitate further debate? Are there new, deeper concepts being discussed between the two sets of arguments?
 2. meaningful_questions: Within the debate history, each author acknowledges each other's arguments and may ask clarifying questions accordingly. Do you believe that the clarifying questions have not been sufficiently addressed already and would be important to answer through further debate? If there are no questions raised in the debate history by either author, return False.
-3. author_0_has_won: Do you believe that it is clear that Author 0's claim is completely novel and does not need to be further deconstructured (in order to determine which components within the claim are truly novel versus overlap with Author 1's paper)?
+3. clear_winner: Do you believe that it is clear that one author has won the debate, and it does not need to be further deconstructured (in order to determine which components within each author's contributions are truly better)?
 
 Output your argument in the following JSON format: 
 {{
     "explanation": <2-5 sentence string to explain your reasoning about whether further debate is necessary when comparing the \"previous arguments\" and the \"current arguments\">,
     "progression_of_arguments": <output a boolean; pick only one of "True" or "False" depending on the history, arguments, and your explanation above>,
     "meaningful_questions": <output a boolean; pick only one of "True" or "False" depending on the history, arguments, and your explanation above>,
-    "author_0_has_won": <output a boolean; pick only one of "True" or "False" depending on the history, arguments, and your explanation above>
+    "clear_winner": <output a boolean; pick only one of "True" or "False" depending on the history, arguments, and your explanation above>
 }}
 """
         outputs = unidecode(self.model.generate(prompt,
@@ -162,7 +158,7 @@ Output your argument in the following JSON format:
         log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)
 
-        return (outputs['progression_of_arguments'] or outputs['meaningful_questions']) and (not outputs['author_0_has_won'])
+        return (outputs['progression_of_arguments'] or outputs['meaningful_questions']) and (not outputs['clear_winner'])
 
     def summarize_debate(self, conversation_history, similarities, differences):
         similarities = ",".join(similarities)
