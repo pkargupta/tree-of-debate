@@ -66,26 +66,29 @@ def log_llm(log_dir, prompt, output):
         f.write('--------------------------------------------\n\n')
 
 class PaperAuthor:
-    def __init__(self, model, id, paper: Paper, focus, log_dir):
+    def __init__(self, model, id, paper: Paper, focus, log_dir, is_retrieval):
         self.model = model # define model - Llama 3.1
         self.paper = paper
         self.focus = focus
         self.id = id
         self.log_dir = log_dir
+        self.is_retrieval = is_retrieval
 
     def gather_evidence(self, topic, k=2, return_scores=True):
         """
         Use paper chunks to get relevant segments to the topic.
         """
-
-        retrievals = self.paper.retrieve_top_k(topic, k=k)
-        evidence, scores = [], []
-        for retrieval in retrievals:
-            evidence.append(retrieval[0])
-            scores.append(retrieval[1])
-        if return_scores:
-            return evidence, scores
-        return evidence
+        if self.is_retrieval:
+            retrievals = self.paper.retrieve_top_k(topic, k=k)
+            evidence, scores = [], []
+            for retrieval in retrievals:
+                evidence.append(retrieval[0])
+                scores.append(retrieval[1])
+            if return_scores:
+                return evidence, scores
+            return evidence
+        else:
+            return self.paper.abstract + " " + self.paper.introduction
 
     def generate_arguments(self, topic, evidence=False, temperature=0.3, top_p=0.99, k=3):
         """

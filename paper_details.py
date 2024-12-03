@@ -5,6 +5,7 @@ class Paper:
         self.title = info['title']
         self.abstract = info['abstract']
         self.text = info['full_text']
+        self.introduction = info['introduction']
         self.chunks = []
         sentences = self.text.split('. ')
         for i in range(0, len(sentences), chunk_size):

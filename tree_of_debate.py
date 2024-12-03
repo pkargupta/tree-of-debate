@@ -57,7 +57,6 @@ def run_code(args, f_pap, c_pap):
     root_node = DebateNode(leaf_node_label)
     subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors, moderator, log=args.log_dir) # k new, finer topics to discuss
 
-    1/0
     conversation_history = []
 
     queue_of_rounds: List[DebateNode] = []
@@ -120,14 +119,27 @@ if __name__ == '__main__':
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
-    # # if not os.path.exists("data.json"):
-    # parse_papers(args.focus_paper, args.cited_paper)
-    # with open('data.json', 'r') as file:
-    #     data = json.load(file)
+    # if not os.path.exists("data.json"):
+    parse_papers(args.focus_paper, args.cited_paper)
+    with open('data.json', 'r') as file:
+        data = json.load(file)
 
-    # model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
-    # # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
-    # for item in data:
-    #     run_code(args, item['focus'], item['cited'])
+    def process(s):
+        return s[s.rfind('/')+1:].replace('.', '_')
+
+    key = process(args.focus_paper)
+    with open(f'abstracts/{key}.json', 'r') as f:
+        focus_info = json.loads(f)
+    
+    key = process(args.cited_paper)
+    with open(f'abstracts/{key}.json', 'r') as f:
+        cited_info = json.loads(f)
+
+    for item in data:
+        item['focus']['introduction'] = focus_info['introduction']
+        item['cited']['introduction'] = cited_info['introduction']
+        run_code(args, item['focus'], item['cited'])
 
