@@ -163,3 +163,5 @@ if __name__ == '__main__':
             os.mkdir(f'../logs/{shorthand}/')
         with open(f'../logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
             f.write(str(row['conclusion']))
+            f.write(str(row['similarities']))
+            f.write(str(row['differences']))

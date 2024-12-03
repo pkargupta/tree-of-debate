@@ -96,9 +96,9 @@ def run_code(args, f_pap, c_pap):
 
     summary = moderator.summarize_debate(conversation_history, similarities, differences)
     with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
-        f.write(summary)
-        f.write(similarities + "\n")
-        f.write(differences + "\n")
+        f.write(summary + "\n")
+        f.write(str(similarities) + "\n")
+        f.write(str(differences) + "\n")
 
     paths = print_path(root_node)
     with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:

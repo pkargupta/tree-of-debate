@@ -22,6 +22,12 @@ def print_path(node: DebateNode, prefix=""):
     
     return path
 
+def get_conversation_of_path(node: DebateNode):
+    if node.parent is None:
+        return f"Topic: {node.round_topic}. {node.conversation_history}"
+    
+    return get_conversation_of_path(node.parent) + f"Child topic: {node.round_topic}. {node.conversation_history}"
+
 def topic_dict_to_str(topic):
     if topic['topic_title'] == topic['topic_description']:
         return topic['topic_title']
@@ -89,17 +95,21 @@ def run_code(args, f_pap, c_pap):
 
     similarities, differences = [], []
     debated_rounds.extend(queue_of_rounds)
+    counter = 0
     for round in debated_rounds:
         if len(round.children) > 0:
             similarities.append(topic_dict_to_str(round.round_topic))
         else:
             differences.append(topic_dict_to_str(round.round_topic))
+            with open(f'{args.log_dir}/conversation_path_{counter}.txt', 'w+') as f:
+                f.write(get_conversation_of_path(round))   
+            counter += 1     
 
     summary = moderator.summarize_debate(conversation_history, similarities, differences)
     with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
-        f.write(summary)
-        f.write(similarities + "\n")
-        f.write(differences + "\n")
+        f.write(summary + "\n")
+        f.write(str(similarities) + "\n")
+        f.write(str(differences) + "\n")
 
     paths = print_path(root_node)
     with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:

@@ -29,6 +29,7 @@ class DebateNode:
         self.init_arguments = {}
         self.response = {}
         self.final_arguments = {}
+        self.conversation_history = None
 
         self.parent = parent
         self.round_topic = round_topic
@@ -136,6 +137,7 @@ class DebateNode:
             self.final_arguments[author.id] = author_revision
             convo_history += f"\t-Author {author.id}: I argue that {author_revision['revised_argument_title'].lower()}. {author_revision['revised_argument_description']}\n"
 
+        self.conversation_history = convo_history
         return convo_history
     
     def expand_node(self, parent_node, new_node):
