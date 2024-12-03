@@ -28,7 +28,8 @@ def prompt_intro_abs(model,data):
     prompts = []
     # document_f = []
     # document_o = []
-    for i,sample in enumerate(data):
+    for i,sample in data.iterrows():
+        sample = data.iloc[i]
         # sample = row.to_dict()
         f_abs, f_intro, f_tit, o_abs, o_intro, opp_tit, topic = sample['f_abstract'], sample['f_intro'], sample['title_focus'], sample['o_abstract'], sample['o_intro'], sample['title_opp'], sample['topic']
         # f_abs, f_intro = extract_sections_from_markdown(f_pap,'Abstract'), extract_sections_from_markdown(f_pap,'Introduction')
@@ -46,8 +47,16 @@ def prompt_intro_abs(model,data):
                     sampling_params=sampling_params,
                     use_tqdm=True)
     # res = []
-    for i,sample in enumerate(data):
-        sample['prompt_intro_abs'] = summaries[i].outputs[0].text
+    # for i,sample in enumerate(data):
+    #     sample['prompt_intro_abs'] = summaries[i].outputs[0].text
+    comp_summaries = [json.loads(summaries[i].outputs[0].text) for i in range(len(summaries))]
+    similarities = [row['similarities'] for row in comp_summaries]
+    differences = [row['differences'] for row in comp_summaries]
+    conclusion = [row['conclusion'] for row in comp_summaries]
+
+    data['simi`larities'] = similarities
+    data['differences'] = differences
+    data['conclusion'] = conclusion
     return data
     # for i in summaries:
     #     res.append(i.outputs[0].text)
@@ -148,6 +157,6 @@ if __name__ == '__main__':
             # outputs = split_posthoc()
         
     for index, row in data.iterrows():
-        shorthand = process(data['focus_paper']) + "-" + process(data['opp_paper'])
-        with open(f'logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
+        shorthand = process(row['focus_paper']) + "-" + process(row['opp_paper'])
+        with open(f'../logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
             f.write(str(row['conclusion']))
