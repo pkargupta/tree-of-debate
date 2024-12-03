@@ -60,7 +60,7 @@ def split_posthoc(model,data):
     prompts_pap2 = []
     # document_f = []
     # document_o = []
-    for i,sample in enumerate(data):
+    for i,sample in data.iterrows():
         sample = data.iloc[i]
         f_abs, f_intro, f_tit, o_abs, o_intro, opp_tit, topic = sample['f_abstract'], sample['f_intro'], sample['title_focus'], sample['o_abstract'], sample['o_intro'], sample['title_opp'], sample['topic']
         f_prompt = f'You are an helpful assistant. Given abstract and intros, write a finegrained summary related to topic {topic} detailing key contributions, innovations and any other criteria you may find fit. <paper> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </paper>'
@@ -69,6 +69,8 @@ def split_posthoc(model,data):
         o_prompt = f'You are an helpful assistant. Given abstract and intros, write a finegrained summary detailing key contributions, innovations and any other criteria you may find fit. <paper> Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro} </paper>'
         prompts_pap2.append(o_prompt)
         # document_o.append(f'Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro}')
+    
+    # input(f'\n\n\n{i}, {len(data)}, {len(prompts_pap1)}, {len(prompts_pap2)}')
     f_summaries = model.generate(prompts_pap1,
                     sampling_params=sampling_params,
                     use_tqdm=True)
@@ -131,11 +133,11 @@ if __name__ == '__main__':
     elif args.baseline_type=="split":
         results = split_posthoc(model_server,data)
     
-    output_path = f"opp_pap_data_{args.baseline_type}.json"
-    with open(output_path, 'w') as f:
-        json.dump(results, f, indent=4)
+    # output_path = f"opp_pap_data_{args.baseline_type}.json"
+    # with open(output_path, 'w') as f:
+    #     json.dump(results, f, indent=4)
     
-    print(f"Data written to {output_path}")
+    # print(f"Data written to {output_path}")
 
     # # print(len(results))
     # data['summary'] = results[0]

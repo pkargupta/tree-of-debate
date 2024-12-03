@@ -125,7 +125,7 @@ if __name__ == '__main__':
     # if not os.path.exists("data.json"):
     
     parse_papers(args.focus_paper, args.cited_paper)
-    
+
     with open('data.json', 'r') as file:
         data = json.load(file)
 
@@ -134,4 +134,21 @@ if __name__ == '__main__':
 
     for item in data:
         run_code(args, item['focus'], item['cited'])
+        
+    # def process(s):
+    #     return s[s.rfind('/')+1:].replace('.', '_')
+
+    # key = process(args.focus_paper)
+    # with open(f'abstracts/{key}.json', 'r') as f:
+    #     focus_info = json.loads(f)
+    
+    # key = process(args.cited_paper)
+    # with open(f'abstracts/{key}.json', 'r') as f:
+    #     cited_info = json.loads(f)
+
+    # for item in data:
+    #     item['focus']['introduction'] = focus_info['introduction']
+    #     item['cited']['introduction'] = cited_info['introduction']
+        
+        
 
