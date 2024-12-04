@@ -79,9 +79,9 @@ def format_self_deliberation(debate_node, paper_authors):
     return out
 
 class Moderator:
-    def __init__(self, model, log_dir):
+    def __init__(self, model, log_file):
         self.model = model # define model - Llama 3.
-        self.log_dir = log_dir
+        self.log_file = log_file
 
     def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=5, temperature=0.3, top_p=0.99):
         topic_title = parent_topic['topic_title']
@@ -116,7 +116,7 @@ Output your subtopics (up to {k}) in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
         outputs = json.loads(outputs)
 
         return outputs['subtopic_list']
@@ -164,7 +164,7 @@ Output your argument in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         print(f'IS EXPAND {outputs}')
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
         outputs = json.loads(outputs)
 
         return (outputs['progression_of_arguments'] or outputs['meaningful_questions']) and (not outputs['clear_winner'])
@@ -193,7 +193,7 @@ Your task is to write a synthesis of the debate that summarizes the similarities
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
         outputs = json.loads(outputs)['summary']
         return outputs
 
@@ -222,7 +222,7 @@ Your task is to determine the {comparison} between the papers according to the c
                         sampling_params=sampling_params,
                         use_tqdm=False)]
             outputs = [s[comparison] for s in outputs]
-            log_llm(self.log_dir, prompt, outputs)
+            log_llm(self.log_file, prompt, outputs)
             return outputs
     
         similarities = generate_comparisons("similarities", sim_schema)
@@ -257,6 +257,6 @@ Your task is to write a synthesis of the debate that summarizes the all the \"su
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
         outputs = json.loads(outputs)['summary']
         return outputs, sub_similarities, sub_differences

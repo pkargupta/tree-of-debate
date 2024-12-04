@@ -74,7 +74,7 @@ def run_code(args, topic, f_pap, c_pap):
         is_retrieval=False
     )
 
-    moderator = Moderator(model_server, args.log_dir)
+    moderator = Moderator(model_server, f'{extra_log_folder}/llm_calls.txt')
 
     paper_authors = [focus_paper, cited_paper]
     leaf_node_label = {'topic_title': topic, 'topic_description': topic}
