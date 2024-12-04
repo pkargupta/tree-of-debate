@@ -222,7 +222,8 @@ Your task is to determine the {comparison} between the papers according to the c
                         sampling_params=sampling_params,
                         use_tqdm=False)]
             outputs = [s[comparison] for s in outputs]
-            log_llm(self.log_file, prompt, outputs)
+            for p, o in prompt, outputs:
+                log_llm(self.log_file, p, o)
             return outputs
     
         similarities = generate_comparisons("similarities", sim_schema)
