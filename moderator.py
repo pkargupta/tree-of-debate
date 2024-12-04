@@ -231,11 +231,16 @@ Your task is to determine the {comparison} between the papers according to the c
         print('\n\n')
         print(differences)
 
-        return self.summarize_debate('\n'.join(conversation_paths), similarities, differences), similarities, 
+        return self.summarize_debate('\n'.join(conversation_paths), similarities, differences), similarities, differences
 
     def summarize_debate_sub_paths(self, conversation_paths):
-        sub_summaries = [f"SUB-SUMMARY #{(i+1)}:\n{self.summarize_debate_all_paths([conversation_path])}\n--------\n" for i, conversation_path in enumerate(conversation_paths)]
+        sub_sum_sim_diff = [self.summarize_debate_all_paths([conversation_path]) for conversation_path in conversation_paths]
+        sub_summaries = [f"SUB-SUMMARY #{(i+1)}:\n{sub_sum_sim_diff[i][0]}\n--------\n" for i in range(len(conversation_paths))]
         sub_summaries = '\n'.join(sub_summaries)
+
+        sub_similarities = [sub_sum_sim_diff[i][1] for i in range(len(conversation_paths))]
+        sub_differences = [sub_sum_sim_diff[i][2] for i in range(len(conversation_paths))]
+        
         logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
@@ -254,4 +259,4 @@ Your task is to write a synthesis of the debate that summarizes the all the \"su
                     use_tqdm=False)[0].outputs[0].text)
         log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)['summary']
-        return outputs
+        return outputs, sub_similarities, sub_differences
