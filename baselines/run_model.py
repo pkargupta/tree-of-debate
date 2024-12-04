@@ -165,3 +165,6 @@ if __name__ == '__main__':
             f.write(str(row['conclusion']))
             f.write(str(row['similarities']))
             f.write(str(row['differences']))
+        with open(f'../logs/{shorthand}/evidence_{args.baseline_type}.txt', 'w+') as f:
+            f.write(str(row['f_abstract']) + " " + str(row['f_intro']))
+            f.write(str(row['o_abstract']) + " " + str(row['o_intro']))
