@@ -12,6 +12,20 @@ import os
 import json
 from data_pairer import parse_papers
 
+def collect_all_evidence(node: DebateNode, author_id):
+    def gather_all_evidence(node, author_id):
+        if len(node.children) == 0:
+            try:
+                return node.evidence[author_id]
+            except:
+                return []
+        evidence = node.evidence[author_id]
+        for child in node.children:
+            evidence.extend(gather_all_evidence(child, author_id))
+    
+    all_evidence = gather_all_evidence(node, author_id)
+    return list(set(all_evidence))
+    
 def print_path(node: DebateNode, prefix=""):
     if len(node.children) == 0:
         return prefix + node.round_topic['topic_title']
@@ -137,6 +151,11 @@ def run_code(args, f_pap, c_pap):
         f.write("\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
+    
+    with open(f'{args.log_dir}/evidence_tod.txt', 'a+') as f:
+        f.write('|'.join(collect_all_evidence(root_node, focus_paper.id)))
+        f.write('\n')
+        f.write('|'.join(collect_all_evidence(root_node, cited_paper.id)))
 
     # with open('temp.pkl', 'wb+') as f:
     #     pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
