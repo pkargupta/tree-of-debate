@@ -22,6 +22,12 @@ def print_path(node: DebateNode, prefix=""):
     
     return path
 
+def get_conversation_of_path(node: DebateNode):
+    if node.parent is None:
+        return f"Topic: {node.round_topic}. {node.conversation_history}"
+    
+    return get_conversation_of_path(node.parent) + f"Child topic: {node.round_topic}. {node.conversation_history}"
+
 def topic_dict_to_str(topic):
     if topic['topic_title'] == topic['topic_description']:
         return topic['topic_title']
@@ -48,8 +54,8 @@ def run_code(args, f_pap, c_pap):
         log_dir=args.log_dir,
         is_retrieval=True
     )
-
-    moderator = Moderator(model_server, args.log_dir)
+    
+    moderator = Moderator(model_server, args.log_dir, args.no_tree_struct)
 
     paper_authors = [focus_paper, cited_paper]
     leaf_node_label = {'topic_title': args.topic, 'topic_description': args.topic}
@@ -89,23 +95,28 @@ def run_code(args, f_pap, c_pap):
 
     similarities, differences = [], []
     debated_rounds.extend(queue_of_rounds)
-    for round in debated_rounds:
-        if len(round.children) > 0:
-            similarities.append(topic_dict_to_str(round.round_topic))
-        else:
-            differences.append(topic_dict_to_str(round.round_topic))
-
+    counter = 0
+    if not args.no_tree_struct:
+        for round in debated_rounds:
+            if len(round.children) > 0:
+                similarities.append(topic_dict_to_str(round.round_topic))
+            else:
+                differences.append(topic_dict_to_str(round.round_topic))
+                with open(f'{args.log_dir}/conversation_path_{counter}.txt', 'w+') as f:
+                    f.write(get_conversation_of_path(round))   
+                counter += 1 
     summary = moderator.summarize_debate(conversation_history, similarities, differences)
     with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
-        f.write(summary)
-        f.write(similarities + "\n")
-        f.write(differences + "\n")
-
-    paths = print_path(root_node)
-    with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:
-        f.write("\n\n\n")
-        f.write("PATHS:\n")
-        f.write(paths)
+        f.write(summary + "\n")
+        if not args.no_tree_struct:
+            f.write(str(similarities) + "\n")
+            f.write(str(differences) + "\n")
+    if not args.no_tree_struct:
+        paths = print_path(root_node)
+        with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:
+            f.write("\n\n\n")
+            f.write("PATHS:\n")
+            f.write(paths)
 
     with open('temp.pkl', 'wb+') as f:
         pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
@@ -118,6 +129,7 @@ if __name__ == '__main__':
     parser.add_argument("--topic", default="enabling large language model reasoning via prompting")
     parser.add_argument("--log_dir", default="logs")
     parser.add_argument("--download_dir", default="/")
+    parser.add_argument("--no_tree_struct", default=False)
     args = parser.parse_args()
 
     if not os.path.exists(args.log_dir):
@@ -138,8 +150,8 @@ if __name__ == '__main__':
     with open('data.json', 'r') as file:
         data = json.load(file)
 
-    # model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
-    model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     for item in data:
         run_code(args, item['focus'], item['cited'])

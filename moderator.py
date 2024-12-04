@@ -70,11 +70,35 @@ def format_self_deliberation(debate_node, paper_authors):
     return out
 
 class Moderator:
-    def __init__(self, model, log_dir):
+    def __init__(self, model, log_dir, no_tree_struct):
         self.model = model # define model - Llama 3.
         self.log_dir = log_dir
+        self.no_tree_struct = no_tree_struct
+    
+    def combine_topic(self, subtopic_list):
+        merged_dict = {
+        "topic_title": "",
+        "topic_description": "",
+        "author_0_relevant_contributions": [],
+        "author_1_relevant_contributions": []
+    }
+    
+        for topic in subtopic_list:
+            # Concatenate topic titles and descriptions
+            merged_dict["topic_title"] += (topic["topic_title"] + " ")
+            merged_dict["topic_description"] += (topic["topic_description"] + " ")
+            
+            # Extend the contribution lists
+            merged_dict["author_0_relevant_contributions"].extend(topic["author_0_relevant_contributions"])
+            merged_dict["author_1_relevant_contributions"].extend(topic["author_1_relevant_contributions"])
+        
+        # Strip extra spaces from strings
+        merged_dict["topic_title"] = merged_dict["topic_title"].strip()
+        merged_dict["topic_description"] = merged_dict["topic_description"].strip()
+        
+        return merged_dict
 
-    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=5, temperature=0.3, top_p=0.99):
+    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=3, temperature=0.3, top_p=0.99):
         topic_title = parent_topic['topic_title']
         prompt = f"""You are a fair and balanced moderator of a debate between two authors determining their respective novel contributions towards the following topic:
 Topic: {parent_topic['topic_title']}
@@ -107,10 +131,13 @@ Output your subtopics (up to {k}) in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         
-        log_llm(self.log_dir, prompt, outputs)
+        
         outputs = json.loads(outputs)
-
-        return outputs['subtopic_list']
+        subtopic_list = outputs['subtopic_list']
+        if self.no_tree_struct:
+            subtopic_list = [self.combine_topic(outputs['subtopic_list'])]
+        log_llm(self.log_dir, prompt, str(subtopic_list))
+        return subtopic_list
     
     def is_expand(self, round: DebateNode, history):
         """
@@ -166,19 +193,29 @@ Output your argument in the following JSON format:
 
         logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+        if self.no_tree_struct:
+            prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. Below, you are given the \"conversation_history\" between the authors
 
-        prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. Below, you are given the \"conversation_history\" between the authors, and the specific similarities and differences. The similarities and differences are from the point-of-view of Author 0.
+    \"conversation_history\":\n{conversation_history}
 
-\"conversation_history\":\n{conversation_history}
+    Your task is to write a synthesis of the debate that summarizes the similarities and differences between the papers. Focus more on the differences than the similarities. Format the output as a schema:
+        {{
+            "summary": <5-10 sentence string to summarize the similarities and differences between the two papesr>
+        }}
+"""
+        else:
+            prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. Below, you are given the \"conversation_history\" between the authors, and the specific similarities and differences. The similarities and differences are from the point-of-view of Author 0.
 
-\"similarities\": {similarities}
+    \"conversation_history\":\n{conversation_history}
 
-\"differences\": {differences}
+    \"similarities\": {similarities}
 
-Your task is to write a synthesis of the debate that summarizes the similarities and differences between the papers. Focus more on the differences than the similarities. Format the output as a schema:
-    {{
-        "summary": <5-10 sentence string to summarize the similarities and differences between the two papesr>
-    }}
+    \"differences\": {differences}
+
+    Your task is to write a synthesis of the debate that summarizes the similarities and differences between the papers. Focus more on the differences than the similarities. Format the output as a schema:
+        {{
+            "summary": <5-10 sentence string to summarize the similarities and differences between the two papesr>
+        }}
 """
         # conversation = history.extend(conversation)
         outputs = unidecode(self.model.generate(prompt,

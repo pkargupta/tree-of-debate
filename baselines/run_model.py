@@ -136,7 +136,7 @@ if __name__ == '__main__':
     
     data = pd.read_csv(args.dataset_path, sep='\t')
     sampling_params = SamplingParams(max_tokens=3000, temperature=0.4, top_p=0.99, min_tokens=64)
-    model_server = LLM(model=args.base_llm,tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model=args.base_llm,tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
 
     if args.baseline_type=="prompt_intro":
         results = prompt_intro_abs(model_server,data)
