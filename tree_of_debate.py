@@ -27,6 +27,8 @@ def collect_all_evidence(node: DebateNode, author_id):
         if evidence is None: evidence = []
         for child in node.children:
             evidence.extend(gather_all_evidence(child, author_id))
+        
+        return evidence
     
     all_evidence = gather_all_evidence(node, author_id)
     return list(set(all_evidence))
@@ -166,8 +168,8 @@ if __name__ == '__main__':
     if not os.path.exists(args.log_dir):
         os.mkdir(args.log_dir)
 
-    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
-    # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
+    # model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     all_papers = pd.read_csv(args.data_file, sep='\t')
 
@@ -176,7 +178,8 @@ if __name__ == '__main__':
         cited_paper = process(row['opp_paper'])
         args.log_dir = f"{args.log_dir}/{focus_paper}-{cited_paper}"
         if os.path.exists(os.path.join(args.log_dir, "summary_tod.txt")):
-            exit()
+            print('SKIPPING THIS ONE')
+            continue
         
         if not os.path.exists(args.log_dir):
             os.mkdir(args.log_dir)

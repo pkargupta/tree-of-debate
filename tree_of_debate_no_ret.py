@@ -1,10 +1,10 @@
 import pickle
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1,2,3"
-from debate import DebateNode
+from tod_no_deliberation.debate import DebateNode
 from paper_details import Paper
-from persona import PaperAuthor
-from moderator import Moderator
+from tod_no_deliberation.persona import PaperAuthor
+from tod_no_deliberation.moderator import Moderator
 import argparse
 from typing import List
 from vllm import LLM

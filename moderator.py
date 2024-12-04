@@ -222,7 +222,7 @@ Your task is to determine the {comparison} between the papers according to the c
                         sampling_params=sampling_params,
                         use_tqdm=False)]
             outputs = [s[comparison] for s in outputs]
-            for p, o in prompt, outputs:
+            for p, o in zip(prompt, outputs):
                 log_llm(self.log_file, p, o)
             return outputs
     
@@ -245,7 +245,7 @@ Your task is to determine the {comparison} between the papers according to the c
         logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
         sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
-        prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. The debate consisted of a couple of topics, and below you are given \"sub_summaries\" for ecah topic that was discussed.
+        prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. The debate consisted of a couple of topics, and below you are given \"sub_summaries\" for each topic that was discussed.
 
 \"sub_summaries\":\n{sub_summaries}
 
