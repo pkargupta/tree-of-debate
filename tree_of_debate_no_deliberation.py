@@ -1,10 +1,10 @@
 import pickle
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1,2,3"
-from debate import DebateNode
+from tod_no_deliberation.debate import DebateNode
 from paper_details import Paper
-from persona import PaperAuthor
-from moderator import Moderator
+from tod_no_deliberation.persona import PaperAuthor
+from tod_no_deliberation.moderator import Moderator
 import argparse
 from typing import List
 from vllm import LLM
@@ -64,7 +64,7 @@ def run_code(args, topic, f_pap, c_pap):
         focus=True,
         id=0,
         log_file=f'{extra_log_folder}/llm_calls.txt',
-        is_retrieval=True
+        is_retrieval=False
     )
 
     cited_paper = PaperAuthor(
@@ -73,7 +73,7 @@ def run_code(args, topic, f_pap, c_pap):
         focus=False,
         id=1,
         log_file=f'{extra_log_folder}/llm_calls.txt',
-        is_retrieval=True
+        is_retrieval=False
     )
 
     moderator = Moderator(model_server, f'{extra_log_folder}/llm_calls.txt')
@@ -131,28 +131,28 @@ def run_code(args, topic, f_pap, c_pap):
     summary = moderator.summarize_debate(conversation_history, similarities, differences)
     summary_all, similarities_all, differences_all = moderator.summarize_debate_all_paths(conversation_paths)
     summary_sub, similarities_sub, differences_sub = moderator.summarize_debate_sub_paths(conversation_paths)
-    with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
+    with open(f'{args.log_dir}/summary_tod_no_ret.txt', 'w+') as f:
         f.write(summary + "\n")
         f.write(str(similarities) + "\n")
         f.write(str(differences) + "\n")
 
-    with open(f'{args.log_dir}/summary_tod_all.txt', 'w+') as f:
+    with open(f'{args.log_dir}/summary_tod_no_ret_all.txt', 'w+') as f:
         f.write(summary_all + "\n")
         f.write(str(similarities_all) + "\n")
         f.write(str(differences_all) + "\n")
 
-    with open(f'{args.log_dir}/summary_tod_sub.txt', 'w+') as f:
+    with open(f'{args.log_dir}/summary_tod_no_ret_sub.txt', 'w+') as f:
         f.write(summary_sub + "\n")
         f.write(str(similarities_sub) + "\n")
         f.write(str(differences_sub) + "\n")
 
     paths = print_path(root_node)
-    with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:
+    with open(f'{args.log_dir}/summary_tod_no_ret.txt', 'a+') as f:
         f.write("\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
     
-    with open(f'{args.log_dir}/evidence_tod.txt', 'a+') as f:
+    with open(f'{args.log_dir}/evidence_tod_no_ret.txt', 'a+') as f:
         f.write('|'.join(collect_all_evidence(root_node, focus_paper.id)))
         f.write('\n')
         f.write('|'.join(collect_all_evidence(root_node, cited_paper.id)))
@@ -177,14 +177,14 @@ if __name__ == '__main__':
         focus_paper = process(row['focus_paper'])
         cited_paper = process(row['opp_paper'])
         args.log_dir = f"{args.log_dir}/{focus_paper}-{cited_paper}"
-        if os.path.exists(os.path.join(args.log_dir, "summary_tod.txt")):
+        if os.path.exists(os.path.join(args.log_dir, "summary_tod_no_ret.txt")):
             print('SKIPPING THIS ONE')
             continue
         
         if not os.path.exists(args.log_dir):
             os.mkdir(args.log_dir)
 
-        extra_log_folder = os.path.join(args.log_dir, 'tod')
+        extra_log_folder = os.path.join(args.log_dir, 'tod_no_ret')
         if not os.path.exists(extra_log_folder):
             os.mkdir(extra_log_folder)
         
