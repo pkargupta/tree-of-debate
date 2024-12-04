@@ -11,6 +11,10 @@ from vllm import LLM
 import os
 import json
 from data_pairer import parse_papers
+from create_runs import process
+import pandas as pd
+
+extra_log_folder = ""
 
 def collect_all_evidence(node: DebateNode, author_id):
     def gather_all_evidence(node, author_id):
@@ -20,6 +24,7 @@ def collect_all_evidence(node: DebateNode, author_id):
             except:
                 return []
         evidence = node.evidence[author_id]
+        if evidence is None: evidence = []
         for child in node.children:
             evidence.extend(gather_all_evidence(child, author_id))
     
@@ -49,14 +54,14 @@ def topic_dict_to_str(topic):
         return f"{topic['topic_title']}: {topic['topic_description']}." # keeping this in case we want to represent topics with the title and description
         # return topic['argument_title']
 
-def run_code(args, f_pap, c_pap):
+def run_code(args, topic, f_pap, c_pap):
 
     focus_paper = PaperAuthor(
         model = model_server,
         paper = Paper(f_pap),
         focus=True,
         id=0,
-        log_dir=args.log_dir,
+        log_file=f'{extra_log_folder}/llm_calls.txt',
         is_retrieval=True
     )
 
@@ -65,18 +70,18 @@ def run_code(args, f_pap, c_pap):
         paper = Paper(c_pap),
         focus=False,
         id=1,
-        log_dir=args.log_dir,
+        log_file=f'{extra_log_folder}/llm_calls.txt',
         is_retrieval=True
     )
 
     moderator = Moderator(model_server, args.log_dir)
 
     paper_authors = [focus_paper, cited_paper]
-    leaf_node_label = {'topic_title': args.topic, 'topic_description': args.topic}
+    leaf_node_label = {'topic_title': topic, 'topic_description': topic}
 
     if args.log_dir != "":
-        with open(os.path.join(args.log_dir, 'self_deliberation.txt'), 'w') as f:
-            f.write(f'Topic: {args.topic}\n\n')
+        with open(os.path.join(extra_log_folder, 'self_deliberation.txt'), 'w') as f:
+            f.write(f'Topic: {topic}\n\n')
 
     # each node has a topic
     root_node = DebateNode(leaf_node_label)
@@ -104,7 +109,7 @@ def run_code(args, f_pap, c_pap):
             depth += 1
 
     conversation_history = ''.join(conversation_history)
-    with open(f'{args.log_dir}/conversation_history.txt', 'w+') as f:
+    with open(f'{extra_log_folder}/conversation_history.txt', 'w+') as f:
         f.write(conversation_history)
 
     similarities, differences, conversation_paths = [], [], []
@@ -115,18 +120,11 @@ def run_code(args, f_pap, c_pap):
             similarities.append(topic_dict_to_str(round.round_topic))
         else:
             differences.append(topic_dict_to_str(round.round_topic))
-            with open(f'{args.log_dir}/conversation_path_{counter}.txt', 'w+') as f:
+            with open(f'{extra_log_folder}/conversation_path_{counter}.txt', 'w+') as f:
                 temp_path = get_conversation_of_path(round) 
                 f.write(temp_path)
                 conversation_paths.append(temp_path)
             counter += 1
-
-    with open('paths.pkl', 'wb+') as f:
-        pickle.dump([similarities, differences, conversation_paths], f)
-    # with open('paths.pkl', 'rb') as f:
-    #     similarities, differences, conversation_paths = pickle.load(f)
-    # with open('temp.pkl', 'rb') as f:
-    #     queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences = pickle.load(f)
 
     summary = moderator.summarize_debate(conversation_history, similarities, differences)
     summary_all, similarities_all, differences_all = moderator.summarize_debate_all_paths(conversation_paths)
@@ -157,15 +155,10 @@ def run_code(args, f_pap, c_pap):
         f.write('\n')
         f.write('|'.join(collect_all_evidence(root_node, cited_paper.id)))
 
-    # with open('temp.pkl', 'wb+') as f:
-    #     pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--focus_paper", default="2406_11709")
-    parser.add_argument("--cited_paper", default="2310_10648")
-    parser.add_argument("--topic", default="helping students fix their mistakes")
+    parser.add_argument("--data_file", default="data.tsv")
     parser.add_argument("--log_dir", default="logs")
     parser.add_argument("--download_dir", default="/")
     args = parser.parse_args()
@@ -173,25 +166,30 @@ if __name__ == '__main__':
     if not os.path.exists(args.log_dir):
         os.mkdir(args.log_dir)
 
-    args.log_dir = f"{args.log_dir}/{args.focus_paper}-{args.cited_paper}"
-    if os.path.exists(os.path.join(args.log_dir, "summary_tod.txt")):
-        print('SKIPPING AS ITS DONE')
-        exit()
-
-    if not os.path.exists(args.log_dir):
-        os.makedirs(args.log_dir)
-
-    # if not os.path.exists("data.json"):
-    
-    parse_papers(args.focus_paper, args.cited_paper)
-
-    with open('data.json', 'r') as file:
-        data = json.load(file)
-
     # model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
     model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
-    for item in data:
-        run_code(args, item['focus'], item['cited'])
-        
+    all_papers = pd.read_csv(args.data_file, sep='\t')
 
+    for _, row in all_papers.iterrows():
+        focus_paper = process(row['focus_paper'])
+        cited_paper = process(row['opp_paper'])
+        args.log_dir = f"{args.log_dir}/{focus_paper}-{cited_paper}"
+        if os.path.exists(os.path.join(args.log_dir, "summary_tod.txt")):
+            exit()
+        
+        if not os.path.exists(args.log_dir):
+            os.mkdir(args.log_dir)
+
+        extra_log_folder = os.path.join(args.log_dir, 'tod')
+        if not os.path.exists(extra_log_folder):
+            os.mkdir(extra_log_folder)
+        
+        
+        parse_papers(focus_paper, cited_paper)
+
+        with open('data.json', 'r') as file:
+            data = json.load(file)
+
+        for item in data:
+            run_code(args, row['topic'], item['focus'], item['cited'])

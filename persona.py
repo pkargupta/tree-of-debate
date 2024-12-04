@@ -82,20 +82,20 @@ class relevance_schema(BaseModel):
     clarifies_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
     irrelevant_to_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
 
-def log_llm(log_dir, prompt, output):
-    with open(f'{log_dir}/llm_calls.txt', 'a+') as f:
+def log_llm(log_file, prompt, output):
+    with open(log_file, 'a+') as f:
         f.write('--------------------------------------------\n')
         f.write(f'PROMPT: {prompt}\n')
         f.write(f'OUTPUT: {output}\n')
         f.write('--------------------------------------------\n\n')
 
 class PaperAuthor:
-    def __init__(self, model, id, paper: Paper, focus, log_dir, is_retrieval):
+    def __init__(self, model, id, paper: Paper, focus, log_file, is_retrieval):
         self.model = model # define model - Llama 3.1
         self.paper = paper
         self.focus = focus
         self.id = id
-        self.log_dir = log_dir
+        self.log_file = log_file
         self.is_retrieval = is_retrieval
 
     def gather_evidence(self, topic, k=2, return_scores=True):
@@ -151,7 +151,7 @@ Output your list of arguments in the following JSON format:
 """
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params)[0].outputs[0].text)
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
         return json.loads(outputs)['argument_list']
     
     
@@ -180,7 +180,7 @@ Output your list of arguments in the following JSON format:
             text = json.loads(i.outputs[0].text.strip().lower())
             if ("no" in text['irrelevant_to_claim']) and (("yes" in text['supports_claim']) or ("yes" in text['refutes_claim']) or ("yes" in text['clarifies_claim'])):
                 refined_evidence.append(evidences[ind])
-            log_llm(self.log_dir, prompts[ind], text)
+            log_llm(self.log_file, prompts[ind], text)
             
         if len(refined_evidence) == 0:
             return [f'We do not address the opposition\'s claim: {topic}']
@@ -235,7 +235,7 @@ Output your argument in the following JSON format:
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
 
         return json.loads((outputs))
 
@@ -276,7 +276,7 @@ Output your argument in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
         return json.loads(outputs)
     
     def revise_argument(self, history, debate_node, parent_debate_node, opposition, temperature=0.45, top_p=0.99):
@@ -311,5 +311,5 @@ Output your argument in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
         return json.loads(outputs)

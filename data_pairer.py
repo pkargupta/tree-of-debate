@@ -41,14 +41,14 @@ def extract_text(pdf_url):
                 
 
     extracted_text = " ".join(extracted_text).replace('\n', ' ') # remove new lines
-    extracted_text = extracted_text.replace("- ", "") # remove justified text errors that result in half words ("arbi-\ntrary")
+    # extracted_text = extracted_text.replace("- ", "") # remove justified text errors that result in half words ("arbi-\ntrary")
     extracted_text = " ".join(extracted_text.split()) # remove unnecessary whitespace in between
     return extracted_text[:extracted_text.find("References")] # only take the text before the references section
 
 def parse_papers(focus_paper, cited_paper):
-    with open(os.path.join("abstracts", focus_paper + ".json"), 'r') as file:
+    with open(os.path.join("abstracts", focus_paper + ".json"), encoding='utf-8', mode='r') as file:
         focus_data = json.load(file)
-    with open(os.path.join("abstracts", cited_paper + ".json"), 'r') as file:
+    with open(os.path.join("abstracts", cited_paper + ".json"), encoding='utf-8', mode='r') as file:
         cited_data = json.load(file)
     
     focus = extract_text(f"https://arxiv.org/pdf/{focus_data['arxiv_key'].replace('_', '.')}")
