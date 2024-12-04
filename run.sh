@@ -20,7 +20,11 @@ export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO!
 # 	}' 
 
 # rm -rf logs/*
-focus_paper="2406_11709.json" # treeinstruct
-cited_paper="2310_10648.json" # bridge
-topic="helping students fix their mistakes"
-python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "$topic"
+CUDA_VISIBLE_DEVICES=0,1 py tree_of_debate.py --data_file data.tsv --log_dir logs
+CUDA_VISIBLE_DEVICES=0,1 py tree_of_debate_no_ret.py --data_file data.tsv --log_dir logs
+CUDA_VISIBLE_DEVICES=0,1 py tree_of_debate_no_tree.py --data_file data.tsv --log_dir logs
+
+cd baselines
+python data_processor.py
+source run.sh
+cd ..
