@@ -30,6 +30,15 @@ class subtopic_schema(BaseModel):
 class subtopic_list_schema(BaseModel):
     subtopic_list : conlist(subtopic_schema, min_length=1, max_length=10)
 
+
+class sim_schema(BaseModel):
+    similarities: Annotated[str, StringConstraints(strip_whitespace=True)]
+    description: Annotated[str, StringConstraints(strip_whitespace=True)]
+    
+class diff_schema(BaseModel):
+    differences: Annotated[str, StringConstraints(strip_whitespace=True)]
+    description: Annotated[str, StringConstraints(strip_whitespace=True)]
+
 def arg_dict_to_str(args, arg_type=True):
     arguments = ""
     for i, key in enumerate(args.keys()):
@@ -178,6 +187,65 @@ Output your argument in the following JSON format:
 Your task is to write a synthesis of the debate that summarizes the similarities and differences between the papers. Focus more on the differences than the similarities. Format the output as a schema:
     {{
         "summary": <5-10 sentence string to summarize the similarities and differences between the two papesr>
+    }}
+"""
+        # conversation = history.extend(conversation)
+        outputs = unidecode(self.model.generate(prompt,
+                    sampling_params=sampling_params,
+                    use_tqdm=False)[0].outputs[0].text)
+        log_llm(self.log_dir, prompt, outputs)
+        outputs = json.loads(outputs)['summary']
+        return outputs
+
+    def summarize_debate_all_paths(self, conversation_paths):
+        def generate_comparisons(comparison, comp_schema):
+            logits_processor = JSONLogitsProcessor(schema=comp_schema, llm=self.model.llm_engine)
+            sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+
+            prompt = [f"""The authors of two papers have debated about their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. Below, you are given the \"conversation_history\" between the authors.
+
+\"conversation_history\":\n{conv_path}
+
+Your task is to determine the {comparison} between the papers according to the conversation. Format the output as a schema:
+{{"{comparison}_list":
+    [
+        {{
+            "{comparison}": <1-2 sentence string explaining the {comparison} between the two papers according to the conversation between Author 0 and Author 1.>,
+            "description": <1-2 sentence string explaining your rationale for the {comparison}>
+        }},
+        ...
+    ]
+}}
+""" for conv_path in conversation_paths]
+            # conversation = history.extend(conversation)
+            outputs = [json.loads(unidecode(text.outputs[0].text)) for text in self.model.generate(prompt,
+                        sampling_params=sampling_params,
+                        use_tqdm=False)]
+            outputs = [s[comparison] for s in outputs]
+            log_llm(self.log_dir, prompt, outputs)
+            return outputs
+    
+        similarities = generate_comparisons("similarities", sim_schema)
+        differences = generate_comparisons("differences", diff_schema)
+        print(similarities)
+        print('\n\n')
+        print(differences)
+
+        return self.summarize_debate('\n'.join(conversation_paths), similarities, differences), similarities, 
+
+    def summarize_debate_sub_paths(self, conversation_paths):
+        sub_summaries = [f"SUB-SUMMARY #{(i+1)}:\n{self.summarize_debate_all_paths([conversation_path])}\n--------\n" for i, conversation_path in enumerate(conversation_paths)]
+        sub_summaries = '\n'.join(sub_summaries)
+        logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+
+        prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. The debate consisted of a couple of topics, and below you are given \"sub_summaries\" for ecah topic that was discussed.
+
+\"sub_summaries\":\n{sub_summaries}
+
+Your task is to write a synthesis of the debate that summarizes the all the \"sub_summaries\" of the debate. Format the output as a schema:
+    {{
+        \"summary\": <5-10 sentence string to summarize the \"sub_summaries\">
     }}
 """
         # conversation = history.extend(conversation)
