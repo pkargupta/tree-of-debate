@@ -38,11 +38,11 @@ def evaluate_one(topic, summary, similarties, differences):
     final_metrics['completeness'] = int(input(completion_prompt))
 
     # sim and diffs
-    similarities_prompt = f"Here are the similarities:\n{similarties}\n\nAre the similarities comprehensive?\n1. No, multiple similarities are problematic.\2. Somewhat, a singular similarity is problematic.\n3. Yes, all similarities are good.\nAnswer: "
-    final_metrics['similarity_comprehension'] = int(input(similarities_prompt))
+    # similarities_prompt = f"Here are the similarities:\n{similarties}\n\nAre the similarities comprehensive?\n1. No, multiple similarities are problematic.\2. Somewhat, a singular similarity is problematic.\n3. Yes, all similarities are good.\nAnswer: "
+    # final_metrics['similarity_comprehension'] = int(input(similarities_prompt))
 
-    differences_prompt = f"Here are the differences:\n{differences}\n\nAre the differences comprehensive?\n1. No, multiple differences are problematic.\2. Somewhat, a singular difference is problematic.\n3. Yes, all differences are good.\nAnswer: "
-    final_metrics['difference_comprehension'] = int(input(differences_prompt))
+    # differences_prompt = f"Here are the differences:\n{differences}\n\nAre the differences comprehensive?\n1. No, multiple differences are problematic.\2. Somewhat, a singular difference is problematic.\n3. Yes, all differences are good.\nAnswer: "
+    # final_metrics['difference_comprehension'] = int(input(differences_prompt))
     
     return final_metrics, metric_logs
 
