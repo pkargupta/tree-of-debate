@@ -59,10 +59,14 @@ if __name__ == '__main__':
     summary_files = glob.glob(f'logs/{args.focus_paper}-{args.cited_paper}/summary*.txt')
 
     for summary_file in summary_files:
-        if os.path.exists(f'evaluation/{args.focus_paper}-{args.cited_paper}/'):
+        temp = summary_file.split('/')[-1]
+        if os.path.exists(f'evaluation/{args.focus_paper}-{args.cited_paper}/{temp}'):
             continue
-
-        os.mkdir(f'evaluation/{args.focus_paper}-{args.cited_paper}/')
+        
+        try:
+            os.mkdir(f'evaluation/{args.focus_paper}-{args.cited_paper}/')
+        except:
+            hi = 9 # do nothing
 
         shorthand = summary_file.split('/')[-1][8:-4]
 
