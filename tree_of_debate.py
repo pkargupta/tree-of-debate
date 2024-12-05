@@ -14,9 +14,21 @@ from data_pairer import parse_papers
 
 def print_path(node: DebateNode, prefix=""):
     if len(node.children) == 0:
-        return prefix + node.round_topic['topic_title']
-    
-    path = prefix + node.round_topic['topic_title'] + "\n"
+        # return prefix + node.round_topic['topic_title']
+        out = f"""{prefix}{node.round_topic['topic_title']}: {node.round_topic['topic_description']}
+{prefix}Author 0's Argument: {node.final_arguments[0]['revised_argument_title']}. {node.final_arguments[0]['revised_argument_description']}
+{prefix}Author 1's Argument: {node.final_arguments[1]['revised_argument_title']}. {node.final_arguments[1]['revised_argument_description']}
+
+"""
+        return out
+    elif node.parent is None:
+        path = prefix + node.round_topic['topic_title'] + "\n\n"
+    else:
+        path = f"""{prefix}{node.round_topic['topic_title']}: {node.round_topic['topic_description']}
+{prefix}Author 0's Argument: {node.final_arguments[0]['revised_argument_title']}. {node.final_arguments[0]['revised_argument_description']}
+{prefix}Author 1's Argument: {node.final_arguments[1]['revised_argument_title']}. {node.final_arguments[1]['revised_argument_description']}
+
+"""
     for child in node.children:
         path += print_path(child, prefix + "\t") + "\n"
     
@@ -28,6 +40,13 @@ def topic_dict_to_str(topic):
     else:
         return f"{topic['topic_title']}: {topic['topic_description']}." # keeping this in case we want to represent topics with the title and description
         # return topic['argument_title']
+
+def collect_evidence(evidence, subtrees):
+    for c in subtrees:
+        for author_id, e in c.evidence.items():
+            evidence[author_id].extend(e)
+    return evidence
+    
 
 def run_code(args, f_pap, c_pap):
 
@@ -58,7 +77,10 @@ def run_code(args, f_pap, c_pap):
 
     # each node has a topic
     root_node = DebateNode(leaf_node_label)
+    all_evidence = {p.id:[] for p in paper_authors}
+    
     subtrees = root_node.conduct_self_deliberation(leaf_node_label, paper_authors, moderator, log=args.log_dir) # k new, finer topics to discuss
+    all_evidence = collect_evidence(all_evidence, subtrees)
 
     conversation_history = []
 
@@ -68,7 +90,7 @@ def run_code(args, f_pap, c_pap):
     debated_rounds = [root_node]
 
     depth = 0
-    max_depth = 2
+    max_depth = 3
 
     while len(queue_of_rounds) > 0:
         round = queue_of_rounds.pop(0)
@@ -77,37 +99,49 @@ def run_code(args, f_pap, c_pap):
         conversation_history.append(conversation)
         if moderator.is_expand(round, conversation) and depth < max_depth:
             new_subtrees = round.conduct_self_deliberation(round.round_topic, paper_authors, moderator)
+            all_evidence = collect_evidence(all_evidence, new_subtrees)
             queue_of_rounds.extend(new_subtrees)
             depth += 1
 
     conversation_history = ''.join(conversation_history)
-    with open(f'{args.log_dir}/conversation_history.txt', 'w+') as f:
+    with open(f'{args.log_dir}/conversation_history.txt', 'w') as f:
         f.write(conversation_history)
+
+    with open(f'{args.log_dir}/evidence.txt', 'w') as f:
+        for author_id, e in all_evidence.items():
+            unique_e = list(set(e))
+            f.write(str(unique_e))
+            f.write('\n')
             
     # with open('temp.pkl', 'rb') as f:
     #     queue_of_rounds, debated_rounds, conversation_history, root_node = pickle.load(f)
     
-    similarities, differences = [], []
-    debated_rounds.extend(queue_of_rounds)
-    for round in debated_rounds:
-        if len(round.children) > 0:
-            similarities.append(topic_dict_to_str(round.round_topic))
-        else:
-            differences.append(topic_dict_to_str(round.round_topic))
+    # similarities, differences = [], []
+    # debated_rounds.extend(queue_of_rounds)
+    # for round in debated_rounds:
+    #     if len(round.children) > 0:
+    #         similarities.append(topic_dict_to_str(round.round_topic))
+    #     else:
+    #         differences.append(topic_dict_to_str(round.round_topic))
 
 
-    summary = moderator.summarize_debate(conversation_history, similarities, differences)
-    with open(f'{args.log_dir}/summary.txt', 'w+') as f:
-        f.write(summary)
+    # summary = moderator.summarize_debate(conversation_history, similarities, differences)
+    
+    # with open(f'{args.log_dir}/summary.txt', 'w') as f:
+    #     f.write(summary)
 
     paths = print_path(root_node)
-    with open(f'{args.log_dir}/summary.txt', 'a+') as f:
+    with open(f'{args.log_dir}/path.txt', 'w') as f:
         f.write("\n\n\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
 
-    with open('temp.pkl', 'wb+') as f:
-        pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
+    path_summary = moderator.summarize_path_debate(paper_authors, leaf_node_label, paths)
+    with open(f'{args.log_dir}/path_summary.txt', 'w') as f:
+        f.write(path_summary)
+
+    # with open('temp.pkl', 'wb+') as f:
+    #     pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
 
 
 if __name__ == '__main__':
@@ -119,6 +153,8 @@ if __name__ == '__main__':
     parser.add_argument("--download_dir", default="/")
     args = parser.parse_args()
 
+    args.log_dir = f"{args.log_dir}/{args.focus_paper.split('.json')[0]}-{args.cited_paper.split('.json')[0]}"
+    
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
@@ -129,7 +165,7 @@ if __name__ == '__main__':
     with open('data.json', 'r') as file:
         data = json.load(file)
 
-    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=100,enable_prefix_caching=True)
+    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=256,enable_prefix_caching=True)
     # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     for item in data:
