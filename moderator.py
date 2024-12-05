@@ -83,7 +83,7 @@ class Moderator:
         self.model = model # define model - Llama 3.
         self.log_file = log_file
 
-    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=5, temperature=0.3, top_p=0.99):
+    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=3, temperature=0.3, top_p=0.99):
         topic_title = parent_topic['topic_title']
         prompt = f"""You are a fair and balanced moderator of a debate between two authors determining their respective novel contributions towards the following topic:
 Topic: {parent_topic['topic_title']}

@@ -98,7 +98,7 @@ class PaperAuthor:
         self.log_file = log_file
         self.is_retrieval = is_retrieval
 
-    def gather_evidence(self, topic, k=2, return_scores=True):
+    def gather_evidence(self, topic, k=5, return_scores=True):
         """
         Use paper chunks to get relevant segments to the topic.
         """

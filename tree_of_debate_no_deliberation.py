@@ -97,7 +97,7 @@ def run_code(args, topic, f_pap, c_pap):
     debated_rounds = [root_node]
 
     depth = 0
-    max_depth = 2
+    max_depth = 3
 
     while len(queue_of_rounds) > 0:
         round = queue_of_rounds.pop(0)
@@ -127,35 +127,35 @@ def run_code(args, topic, f_pap, c_pap):
                 f.write(temp_path)
                 conversation_paths.append(temp_path)
             counter += 1
-
+    
     summary = moderator.summarize_debate(conversation_history, similarities, differences)
-    summary_all, similarities_all, differences_all = moderator.summarize_debate_all_paths(conversation_paths)
+    summary_all, similarities_all, differences_all = moderator.summarize_debate_all_paths(conversation_history)
     summary_sub, similarities_sub, differences_sub = moderator.summarize_debate_sub_paths(conversation_paths)
-    with open(f'{args.log_dir}/summary_tod_no_ret.txt', 'w+') as f:
+    with open(f'{args.log_dir}/summary_tod_no_delib.txt', 'w+') as f:
         f.write(summary + "\n")
         f.write(str(similarities) + "\n")
         f.write(str(differences) + "\n")
 
-    with open(f'{args.log_dir}/summary_tod_no_ret_all.txt', 'w+') as f:
+    with open(f'{args.log_dir}/summary_tod_no_delib_all.txt', 'w+') as f:
         f.write(summary_all + "\n")
         f.write(str(similarities_all) + "\n")
         f.write(str(differences_all) + "\n")
 
-    with open(f'{args.log_dir}/summary_tod_no_ret_sub.txt', 'w+') as f:
+    with open(f'{args.log_dir}/summary_tod_no_delib_sub.txt', 'w+') as f:
         f.write(summary_sub + "\n")
         f.write(str(similarities_sub) + "\n")
         f.write(str(differences_sub) + "\n")
 
     paths = print_path(root_node)
-    with open(f'{args.log_dir}/summary_tod_no_ret.txt', 'a+') as f:
+    with open(f'{args.log_dir}/summary_tod_no_delib.txt', 'a+') as f:
         f.write("\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
     
-    with open(f'{args.log_dir}/evidence_tod_no_ret.txt', 'a+') as f:
-        f.write('|'.join(collect_all_evidence(root_node, focus_paper.id)))
+    with open(f'{args.log_dir}/evidence_tod_no_delib.txt', 'a+') as f:
+        f.write(f'Paper Title: {focus_paper.paper.title}; Paper Abstract: {focus_paper.paper.abstract}; Paper Introduction: {focus_paper.paper.introduction}')
         f.write('\n')
-        f.write('|'.join(collect_all_evidence(root_node, cited_paper.id)))
+        f.write(f'Paper Title: {cited_paper.paper.title}; Paper Abstract: {cited_paper.paper.abstract}; Ppaer Introduction: {cited_paper.paper.introduction}')
 
 
 if __name__ == '__main__':
@@ -177,14 +177,14 @@ if __name__ == '__main__':
         focus_paper = process(row['focus_paper'])
         cited_paper = process(row['opp_paper'])
         args.log_dir = f"{args.log_dir}/{focus_paper}-{cited_paper}"
-        if os.path.exists(os.path.join(args.log_dir, "summary_tod_no_ret.txt")):
+        if os.path.exists(os.path.join(args.log_dir, "summary_tod_no_delib.txt")):
             print('SKIPPING THIS ONE')
             continue
         
         if not os.path.exists(args.log_dir):
             os.mkdir(args.log_dir)
 
-        extra_log_folder = os.path.join(args.log_dir, 'tod_no_ret')
+        extra_log_folder = os.path.join(args.log_dir, 'tod_no_delib')
         if not os.path.exists(extra_log_folder):
             os.mkdir(extra_log_folder)
         

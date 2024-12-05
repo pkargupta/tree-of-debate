@@ -97,7 +97,7 @@ def run_code(args, topic, f_pap, c_pap):
     debated_rounds = [root_node]
 
     depth = 0
-    max_depth = 2
+    max_depth = 3
 
     while len(queue_of_rounds) > 0:
         round = queue_of_rounds.pop(0)
@@ -127,36 +127,48 @@ def run_code(args, topic, f_pap, c_pap):
                 f.write(temp_path)
                 conversation_paths.append(temp_path)
             counter += 1
-
-    summary = moderator.summarize_debate(conversation_history, similarities, differences)
-    summary_all, similarities_all, differences_all = moderator.summarize_debate_all_paths(conversation_paths)
-    summary_sub, similarities_sub, differences_sub = moderator.summarize_debate_sub_paths(conversation_paths)
-    with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
-        f.write(summary + "\n")
-        f.write(str(similarities) + "\n")
-        f.write(str(differences) + "\n")
-
-    with open(f'{args.log_dir}/summary_tod_all.txt', 'w+') as f:
-        f.write(summary_all + "\n")
-        f.write(str(similarities_all) + "\n")
-        f.write(str(differences_all) + "\n")
-
-    with open(f'{args.log_dir}/summary_tod_sub.txt', 'w+') as f:
-        f.write(summary_sub + "\n")
-        f.write(str(similarities_sub) + "\n")
-        f.write(str(differences_sub) + "\n")
-
-    paths = print_path(root_node)
-    with open(f'{args.log_dir}/summary_tod.txt', 'a+') as f:
-        f.write("\n\n\n")
-        f.write("PATHS:\n")
-        f.write(paths)
     
-    with open(f'{args.log_dir}/evidence_tod.txt', 'a+') as f:
-        f.write('|'.join(collect_all_evidence(root_node, focus_paper.id)))
-        f.write('\n')
-        f.write('|'.join(collect_all_evidence(root_node, cited_paper.id)))
+    with open('temp.pkl', 'wb+') as f:
+        pickle.dump([root_node, queue_of_rounds, debated_rounds, conversation_history, similarities, differences, conversation_paths], f)
 
+    try:
+        summary = moderator.summarize_debate(conversation_history, similarities, differences)
+        paths = print_path(root_node)
+        with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
+            f.write(summary + "\n")
+            f.write(str(similarities) + "\n")
+            f.write(str(differences) + "\n")
+            f.write("\n\n\n")
+            f.write("PATHS:\n")
+            f.write(paths)
+    except:
+        hi = 9 # do nothing
+
+    try:
+        summary_all, similarities_all, differences_all = moderator.summarize_debate_all_paths(conversation_history)
+        with open(f'{args.log_dir}/summary_tod_all.txt', 'w+') as f:
+            f.write(summary_all + "\n")
+            f.write(str(similarities_all) + "\n")
+            f.write(str(differences_all) + "\n")
+    except:
+        hi = 9
+
+    try:
+        summary_sub, similarities_sub, differences_sub = moderator.summarize_debate_sub_paths(conversation_paths)
+        with open(f'{args.log_dir}/summary_tod_sub.txt', 'w+') as f:
+            f.write(summary_sub + "\n")
+            f.write(str(similarities_sub) + "\n")
+            f.write(str(differences_sub) + "\n")
+    except:
+        hi = 9
+    
+    try:
+        with open(f'{args.log_dir}/evidence_tod.txt', 'a+') as f:
+            f.write('|'.join(collect_all_evidence(root_node, focus_paper.id)))
+            f.write('\n')
+            f.write('|'.join(collect_all_evidence(root_node, cited_paper.id)))
+    except:
+        hi = 9
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -196,3 +208,4 @@ if __name__ == '__main__':
 
         for item in data:
             run_code(args, row['topic'], item['focus'], item['cited'])
+        exit()

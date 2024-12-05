@@ -55,7 +55,7 @@ def prompt_intro_abs(model,data):
     differences = [row['differences'] for row in comp_summaries]
     conclusion = [row['conclusion'] for row in comp_summaries]
 
-    data['simi`larities'] = similarities
+    data['similarities'] = similarities
     data['differences'] = differences
     data['conclusion'] = conclusion
     return data
@@ -139,9 +139,9 @@ if __name__ == '__main__':
     model_server = LLM(model=args.base_llm,tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     if args.baseline_type=="prompt_intro":
-        results = prompt_intro_abs(model_server,data)
+        data = prompt_intro_abs(model_server,data)
     elif args.baseline_type=="split":
-        results = split_posthoc(model_server,data)
+        data = split_posthoc(model_server,data)
     
     # output_path = f"opp_pap_data_{args.baseline_type}.json"
     # with open(output_path, 'w') as f:
