@@ -7,6 +7,7 @@ from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
 from outlines.serve.vllm import JSONLogitsProcessor
 import os
+from unidecode import unidecode
 
 def process(s):
     # s = ''.join(s.split(' ')[:2])
@@ -162,9 +163,12 @@ if __name__ == '__main__':
         if not os.path.exists(f'../logs/{shorthand}/'):
             os.mkdir(f'../logs/{shorthand}/')
         with open(f'../logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
-            f.write(str(row['conclusion']))
-            f.write(str(row['similarities']))
-            f.write(str(row['differences']))
+            f.write(unidecode(str(row['conclusion'])))
+            f.write('\n')
+            f.write(unidecode(str(row['similarities'])))
+            f.write('\n')
+            f.write(unidecode(str(row['differences'])))
         with open(f'../logs/{shorthand}/evidence_{args.baseline_type}.txt', 'w+') as f:
-            f.write(str(row['f_abstract']) + " " + str(row['f_intro']))
-            f.write(str(row['o_abstract']) + " " + str(row['o_intro']))
+            f.write(unidecode(str(row['f_abstract']) + " " + str(row['f_intro'])))
+            f.write('\n')
+            f.write(unidecode(str(row['o_abstract']) + " " + str(row['o_intro'])))
