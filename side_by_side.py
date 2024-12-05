@@ -4,7 +4,7 @@ import glob
 import os
 
 def evaluate_one(topic, summary):
-    print(' '.join(summary))
+    print('.'.join(summary))
 
     metric_logs = []
 
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     parser.add_argument("--topic", default="helping students fix their mistakes")
     args = parser.parse_args()
 
-    if os.path.exists('evaluation/'):
+    if not os.path.exists('evaluation/'):
         os.mkdir('evaluation/')
 
     summary_files = glob.glob(f'logs/{args.focus_paper}-{args.cited_paper}/summary*.txt')
@@ -67,41 +67,17 @@ if __name__ == '__main__':
         shorthand = summary_file.split('/')[-1][8:-4]
 
         with open(summary_file, 'r') as f:
-            text = f.readline()
-            # similarities = f.readline()
-            # differences = f.readline()        
+            text = f.readline()      
         
         text = [sent for sent in text.split('.') if len(sent) > 0]
         final_metrics, metric_logs = evaluate_one(args.topic, text)
 
         with open(f'evaluation/final_eval.csv', 'a+') as f:
-            s = ",".join([final_metrics[metric] for metric in final_metrics.keys()])
-            f.write(f'{args.focus_paper}-{args.cited_paper}, {shorthand}, {s}')
+            s = ",".join([str(final_metrics[metric]) for metric in final_metrics.keys()])
+            f.write(f'{args.focus_paper}-{args.cited_paper}, {shorthand}, {s}\n')
 
         with open(f'evaluation/{args.focus_paper}-{args.cited_paper}/summary_{shorthand}.txt', 'w+') as f:
             # for metric in final_metrics.keys():
             #     f.write(f'{metric},{final_metrics[metric]}\n')
             for i, row in enumerate(metric_logs):
                 f.write(f'{i},{str(row)[1:-1]}\n')
-    # for summary_file in summary_files:
-    #     if os.path.exists(f'evaluation/{args.focus_paper}-{args.cited_paper}/'):
-    #         continue
-
-    #     os.mkdir(f'evaluation/{args.focus_paper}-{args.cited_paper}/')
-
-    #     shorthand = summary_file.split('/')[-1][8:-4]
-
-    #     with open(summary_file, 'r') as f:
-    #         text = f.readline()
-    #         # similarities = f.readline()
-    #         # differences = f.readline()        
-        
-    #     text = [sent for sent in text.split('.') if len(sent) > 0]
-    #     final_metrics, metric_logs = evaluate_one(args.topic, text)
-
-
-    #     with open(f'evaluation/{args.focus_paper}-{args.cited_paper}/summary_{shorthand}.txt', 'w+') as f:
-    #         for metric in final_metrics.keys():
-    #             f.write(f'{metric},{final_metrics[metric]}\n')
-    #         for i, row in enumerate(metric_logs):
-    #             f.write(f'{i},{str(row)[1:-1]}\n')
