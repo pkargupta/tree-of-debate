@@ -157,7 +157,7 @@ if __name__ == '__main__':
 
     # data.to_csv(f'results_{args.baseline_type}.tsv', sep='\t', index=False)
             # outputs = split_posthoc()
-        
+
     for index, row in data.iterrows():
         shorthand = process(row['focus_paper']) + "-" + process(row['opp_paper'])
         if not os.path.exists(f'../logs/{shorthand}/'):
@@ -169,6 +169,6 @@ if __name__ == '__main__':
             f.write('\n')
             f.write(unidecode(str(row['differences'])))
         with open(f'../logs/{shorthand}/evidence_{args.baseline_type}.txt', 'w+') as f:
-            f.write(unidecode(str(row['f_abstract']) + " " + str(row['f_intro'])))
+            f.write(unidecode((str(row['f_abstract']) + " " + str(row['f_intro'])).replace('\n', ' ')))
             f.write('\n')
-            f.write(unidecode(str(row['o_abstract']) + " " + str(row['o_intro'])))
+            f.write(unidecode((str(row['o_abstract']) + " " + str(row['o_intro'])).replace('\n', ' ')))
