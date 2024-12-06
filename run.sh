@@ -20,7 +20,7 @@ export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO!
 # 	}' 
 
 # rm -rf logs/*
-focus_paper="2406_11709.json" # treeinstruct
-cited_paper="2310_10648.json" # bridge
-topic="helping students fix their mistakes"
+focus_paper="2404_02078.json" # treeinstruct
+cited_paper="2406_09136.json" # bridge
+topic="using preferences to train language models for better reasoning"
 python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "$topic"
