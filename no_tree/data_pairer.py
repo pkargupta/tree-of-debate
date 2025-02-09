@@ -17,11 +17,7 @@ import json
 from nltk import word_tokenize
 
 def extract_text(pdf_url):
-    try:
-        raw_extracted_text = arxiv_to_text(pdf_url).strip()
-    except:
-        raise Exception(f"PDF Link INVALID! {pdf_url}")
-        
+    raw_extracted_text = arxiv_to_text(pdf_url).strip()
     raw_extracted_text = unidecode(raw_extracted_text)
 
     printable = set(string.printable)
@@ -45,22 +41,22 @@ def extract_text(pdf_url):
                 
 
     extracted_text = " ".join(extracted_text).replace('\n', ' ') # remove new lines
-    # extracted_text = extracted_text.replace("- ", "") # remove justified text errors that result in half words ("arbi-\ntrary")
+    extracted_text = extracted_text.replace("- ", "") # remove justified text errors that result in half words ("arbi-\ntrary")
     extracted_text = " ".join(extracted_text.split()) # remove unnecessary whitespace in between
     return extracted_text[:extracted_text.find("References")] # only take the text before the references section
 
 def parse_papers(focus_paper, cited_paper):
-    with open(os.path.join("abstracts", focus_paper + ".json"), encoding='utf-8', mode='r') as file:
+    with open(os.path.join("abstracts", focus_paper), 'r') as file:
         focus_data = json.load(file)
-    with open(os.path.join("abstracts", cited_paper + ".json"), encoding='utf-8', mode='r') as file:
+    with open(os.path.join("abstracts", cited_paper), 'r') as file:
         cited_data = json.load(file)
     
     focus = extract_text(f"https://arxiv.org/pdf/{focus_data['arxiv_key'].replace('_', '.')}")
     cited = extract_text(f"https://arxiv.org/pdf/{cited_data['arxiv_key'].replace('_', '.')}")
 
     data = []
-    data.append({'focus':{'title':unidecode(focus_data['title']), 'abstract':unidecode(focus_data['abstract']), 'introduction': unidecode(focus_data['introduction']), 'full_text':focus},
-                 'cited':{'title':unidecode(cited_data['title']), 'abstract':unidecode(cited_data['abstract']), 'introduction': unidecode(cited_data['introduction']), 'full_text':cited}})
+    data.append({'focus':{'title':unidecode(focus_data['title']), 'abstract':unidecode(focus_data['abstract']), 'full_text':focus},
+                 'cited':{'title':unidecode(cited_data['title']), 'abstract':unidecode(cited_data['abstract']), 'full_text':cited}})
 
     with open('data.json', 'w') as file:
         json.dump(data, file)

@@ -32,7 +32,8 @@ def find_top_k(query: str, corpus_emb: Dict[str, np.ndarray], k: int = 10) -> Li
     similarities = []
     for chunk, emb in corpus_emb.items():
         sim = cosine_similarity(query_emb, emb)
-        similarities.append((chunk, sim))
+        if len(chunk) > 150:
+            similarities.append((chunk, sim))
     similarities.sort(key=lambda x: x[1], reverse=True)
     return similarities[:k]
 

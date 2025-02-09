@@ -20,11 +20,12 @@ export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO!
 # 	}' 
 
 # rm -rf logs/*
-CUDA_VISIBLE_DEVICES=0,1 py tree_of_debate.py --data_file data.tsv --log_dir logs
-CUDA_VISIBLE_DEVICES=0,1 py tree_of_debate_no_ret.py --data_file data.tsv --log_dir logs
-CUDA_VISIBLE_DEVICES=0,1 py tree_of_debate_no_tree.py --data_file data.tsv --log_dir logs
 
-cd baselines
-python data_processor.py
-source run.sh
-cd ..
+# focus_paper="2006_08591.json" # treeinstruct
+# cited_paper="2006_08656.json" # bridge
+# topic="deep equilibrium models"
+# python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "$topic"
+
+python final_run.py --experiment "tod"
+# python final_run.py --experiment "single"
+# python final_run.py --experiment "two"

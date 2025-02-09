@@ -1,36 +1,39 @@
 import pickle
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1,2,3"
-from debate import DebateNode
-from paper_details import Paper
-from persona import PaperAuthor
-from moderator import Moderator
+from no_delib.debate import DebateNode
+from no_delib.paper_details import Paper
+from no_delib.persona import PaperAuthor
+from no_delib.moderator import Moderator
 import argparse
 from typing import List
 from vllm import LLM
 import os
 import json
-from data_pairer import parse_papers, parse_papers_url
+from no_delib.data_pairer import parse_papers
 
-extra_log_folder = ""
+def print_path_old(node: DebateNode, prefix=""):
+    if len(node.children) == 0:
+        # return prefix + node.round_topic['topic_title']
+        out = f"""{prefix}{node.round_topic['topic_title']}: {node.round_topic['topic_description']}
+{prefix}Author 0's Argument: {node.final_arguments[0]['revised_argument_title']}. {node.final_arguments[0]['revised_argument_description']}
+{prefix}Author 1's Argument: {node.final_arguments[1]['revised_argument_title']}. {node.final_arguments[1]['revised_argument_description']}
 
-def collect_all_evidence(node: DebateNode, author_id):
-    def gather_all_evidence(node, author_id):
-        if len(node.children) == 0:
-            try:
-                return node.evidence[author_id]
-            except:
-                return []
-        evidence = node.evidence[author_id]
-        if evidence is None: evidence = []
-        for child in node.children:
-            evidence.extend(gather_all_evidence(child, author_id))
-        
-        return evidence
+"""
+        return out
+    elif node.parent is None:
+        path = prefix + node.round_topic['topic_title'] + "\n\n"
+    else:
+        path = f"""{prefix}{node.round_topic['topic_title']}: {node.round_topic['topic_description']}
+{prefix}Author 0's Argument: {node.final_arguments[0]['revised_argument_title']}. {node.final_arguments[0]['revised_argument_description']}
+{prefix}Author 1's Argument: {node.final_arguments[1]['revised_argument_title']}. {node.final_arguments[1]['revised_argument_description']}
+
+"""
+    for child in node.children:
+        path += print_path(child, prefix + "\t") + "\n"
     
-    all_evidence = gather_all_evidence(node, author_id)
-    return list(set(all_evidence))
-    
+    return path
+
 def print_path(node: DebateNode, prefix=""):
     if len(node.children) == 0:
         # return prefix + node.round_topic['topic_title']
@@ -68,12 +71,6 @@ def print_path(node: DebateNode, prefix=""):
     
     return path, node_dict
 
-def get_conversation_of_path(node: DebateNode):
-    if node.parent is None:
-        return f"Topic: {node.round_topic}. {node.conversation_history}"
-    
-    return get_conversation_of_path(node.parent) + f"\n\nChild topic: {node.round_topic}. {node.conversation_history}"
-
 def topic_dict_to_str(topic):
     if topic['topic_title'] == topic['topic_description']:
         return topic['topic_title']
@@ -88,15 +85,14 @@ def collect_evidence(evidence, subtrees):
     return evidence
     
 
-def run_code(args, f_pap, c_pap, model_server):
+def run_no_delib_code(args, f_pap, c_pap, model_server):
 
     focus_paper = PaperAuthor(
         model = model_server,
         paper = Paper(f_pap),
         focus=True,
         id=0,
-        log_file=f'{extra_log_folder}/llm_calls.txt',
-        is_retrieval=True
+        log_dir=args.log_dir
     )
 
     cited_paper = PaperAuthor(
@@ -104,21 +100,17 @@ def run_code(args, f_pap, c_pap, model_server):
         paper = Paper(c_pap),
         focus=False,
         id=1,
-        log_file=f'{extra_log_folder}/llm_calls.txt',
-        is_retrieval=True
+        log_dir=args.log_dir
     )
 
-    moderator = Moderator(model_server, f'{extra_log_folder}/llm_calls.txt')
+    moderator = Moderator(model_server, args.log_dir)
 
     paper_authors = [focus_paper, cited_paper]
-    leaf_node_label = {'topic_title': topic, 'topic_description': topic}
+    leaf_node_label = {'topic_title': args.topic, 'topic_description': args.topic}
 
     if args.log_dir != "":
-        with open(os.path.join(extra_log_folder, 'self_deliberation.txt'), 'w') as f:
-            f.write(f'Topic: {topic}\n\n')
-
-        with open(f'{args.log_dir}/llm_calls.txt', 'w') as f:
-            f.write(f'LLM Calls:\n')
+        with open(os.path.join(args.log_dir, f'self_deliberation.txt'), 'w') as f:
+            f.write(f'Topic: {args.topic}\n\n')
 
     # each node has a topic
     root_node = DebateNode(leaf_node_label)
@@ -149,106 +141,44 @@ def run_code(args, f_pap, c_pap, model_server):
             depth += 1
 
     conversation_history = ''.join(conversation_history)
-    with open(f'{args.log_dir}/conversation_history.txt', 'w') as f:
+    with open(f'{args.log_dir}/{args.experiment}_conversation_history.txt', 'w') as f:
         f.write(conversation_history)
 
-    with open(f'{args.log_dir}/evidence.txt', 'w') as f:
+    with open(f'{args.log_dir}/{args.experiment}_evidence.txt', 'w') as f:
         for author_id, e in all_evidence.items():
             unique_e = list(set(e))
             f.write(str(unique_e))
             f.write('\n')
-            
-    # with open('temp.pkl', 'rb') as f:
-    #     queue_of_rounds, debated_rounds, conversation_history, root_node = pickle.load(f)
-    
-    # similarities, differences = [], []
-    # debated_rounds.extend(queue_of_rounds)
-    # for round in debated_rounds:
-    #     if len(round.children) > 0:
-    #         similarities.append(topic_dict_to_str(round.round_topic))
-    #     else:
-    #         differences.append(topic_dict_to_str(round.round_topic))
-
-
-    # summary = moderator.summarize_debate(conversation_history, similarities, differences)
-    
-    # with open(f'{args.log_dir}/summary.txt', 'w') as f:
-    #     f.write(summary)
 
     paths, tree_dict = print_path(root_node)
-    with open(f'{args.log_dir}/path.txt', 'w') as f:
+    with open(f'{args.log_dir}/{args.experiment}_path.txt', 'w') as f:
         f.write("\n\n\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
 
-
-    with open(f'{args.log_dir}/tree.json', 'w', encoding='utf-8') as f:
-        json.dump(tree_dict, f, ensure_ascii=False, indent=4)
-
     path_summary = moderator.summarize_path_debate(paper_authors, leaf_node_label, json.dumps(tree_dict, indent=2))
-    with open(f'{args.log_dir}/path_summary.txt', 'w') as f:
+    with open(f'{args.log_dir}/{args.experiment}_summary.txt', 'w') as f:
         f.write(path_summary)
 
     # with open('temp.pkl', 'wb+') as f:
     #     pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
 
-    try:
-        summary = moderator.summarize_debate(conversation_history, similarities, differences)
-        paths = print_path(root_node)
-        with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
-            f.write(summary + "\n")
-            f.write(str(similarities) + "\n")
-            f.write(str(differences) + "\n")
-            f.write("\n\n\n")
-            f.write("PATHS:\n")
-            f.write(paths)
-    except:
-        hi = 9 # do nothing
-
-    try:
-        summary_all, similarities_all, differences_all = moderator.summarize_debate_all_paths(conversation_history)
-        with open(f'{args.log_dir}/summary_tod_all.txt', 'w+') as f:
-            f.write(summary_all + "\n")
-            f.write(str(similarities_all) + "\n")
-            f.write(str(differences_all) + "\n")
-    except:
-        hi = 9
-
-    try:
-        summary_sub, similarities_sub, differences_sub = moderator.summarize_debate_sub_paths(conversation_paths)
-        with open(f'{args.log_dir}/summary_tod_sub.txt', 'w+') as f:
-            f.write(summary_sub + "\n")
-            f.write(str(similarities_sub) + "\n")
-            f.write(str(differences_sub) + "\n")
-    except:
-        hi = 9
-    
-    try:
-        with open(f'{args.log_dir}/evidence_tod.txt', 'a+') as f:
-            f.write('|'.join(collect_all_evidence(root_node, focus_paper.id)))
-            f.write('\n')
-            f.write('|'.join(collect_all_evidence(root_node, cited_paper.id)))
-    except:
-        hi = 9
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--focus_paper", default="2406_11709")
     parser.add_argument("--cited_paper", default="2310_10648")
-    parser.add_argument("--topic", default="wireless sensing of human activity")
+    parser.add_argument("--topic", default="helping students fix their mistakes")
     parser.add_argument("--log_dir", default="logs")
     parser.add_argument("--download_dir", default="/")
-    parser.add_argument('--no_arxiv', action=argparse.BooleanOptionalAction)
-
     args = parser.parse_args()
 
-    if args.no_arxiv:
-        args.log_dir = f"{args.log_dir}/{args.focus_paper.split('.json')[0]}-{args.cited_paper.split('.json')[0]}"
-    else:
-        args.log_dir = f"{args.log_dir}/{args.focus_paper.split('.json')[0]}-{args.cited_paper.split('.json')[0]}"
+    args.log_dir = f"{args.log_dir}/no_delib/{args.focus_paper.split('.json')[0]}-{args.cited_paper.split('.json')[0]}"
     
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
+
+    # if not os.path.exists("data.json"):
     
     parse_papers(args.focus_paper, args.cited_paper)
     
@@ -259,18 +189,5 @@ if __name__ == '__main__':
     # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     for item in data:
-        run_code(args, item['focus'], item['cited'], model_server)
+        run_code(args, item['focus'], item['cited'])
 
-        extra_log_folder = os.path.join(args.log_dir, 'tod')
-        if not os.path.exists(extra_log_folder):
-            os.mkdir(extra_log_folder)
-        
-        
-        parse_papers(focus_paper, cited_paper)
-
-        with open('data.json', 'r') as file:
-            data = json.load(file)
-
-        for item in data:
-            run_code(args, row['topic'], item['focus'], item['cited'])
-        exit()

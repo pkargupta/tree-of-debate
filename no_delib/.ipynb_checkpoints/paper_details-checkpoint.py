@@ -4,9 +4,8 @@ class Paper:
     def __init__(self, info, chunk_size=3) -> None:
         self.title = info['title']
         self.abstract = info['abstract']
-        self.introduction = info['introduction'] if 'introduction' in info else None
-        self.text = info['full_text']
         self.introduction = info['introduction']
+        self.text = info['full_text']
         self.chunks = []
         sentences = self.text.split('. ')
         for i in range(0, len(sentences), chunk_size):

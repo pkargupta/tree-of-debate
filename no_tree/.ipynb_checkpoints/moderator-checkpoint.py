@@ -1,11 +1,11 @@
 from vllm import SamplingParams
 from outlines.serve.vllm import JSONLogitsProcessor
 from unidecode import unidecode
-from persona import log_llm
+from no_tree.persona import log_llm
 import json
 from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
-from debate import DebateNode
+from no_tree.debate import DebateNode
 
 class summary_schema(BaseModel):
     summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=50)]
@@ -25,19 +25,6 @@ class subtopic_schema(BaseModel):
     topic_description: Annotated[str, StringConstraints(strip_whitespace=True)]
     author_0_relevant_contributions: conlist(int, min_length=0,max_length=10)
     author_1_relevant_contributions: conlist(int, min_length=0,max_length=10)
-    
-    
-class subtopic_list_schema(BaseModel):
-    subtopic_list : conlist(subtopic_schema, min_length=1, max_length=10)
-
-
-class sim_schema(BaseModel):
-    similarities: Annotated[str, StringConstraints(strip_whitespace=True)]
-    description: Annotated[str, StringConstraints(strip_whitespace=True)]
-    
-class diff_schema(BaseModel):
-    differences: Annotated[str, StringConstraints(strip_whitespace=True)]
-    description: Annotated[str, StringConstraints(strip_whitespace=True)]
 
 def arg_dict_to_str(args, arg_type=True):
     arguments = ""
@@ -79,11 +66,11 @@ def format_self_deliberation(debate_node, paper_authors):
     return out
 
 class Moderator:
-    def __init__(self, model, log_file):
+    def __init__(self, model, log_dir):
         self.model = model # define model - Llama 3.
-        self.log_file = log_file
+        self.log_dir = log_dir
 
-    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=3, temperature=0.3, top_p=0.99):
+    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=5, temperature=0.3, top_p=0.99):
         topic_title = parent_topic['topic_title']
         prompt = f"""You are a fair and balanced moderator of a debate between two authors determining their respective novel contributions towards the following topic:
 Topic: {parent_topic['topic_title']}
@@ -96,30 +83,25 @@ Here are the two papers and their claimed novel contributions with corresponding
 Based on each of the author's claimed novelties, evidence, and counter-evidence to each other's arguments, you must determine the most meaningful, diverse set of subtopics within the parent topic, {topic_title}, which best cover the types of contributions each of the papers make. Remember that for each of your selected topics, the papers will be debating which of them makes the better contribution towards the topic. Hence, for each of your subtopics, cite the integer IDs of any relevant contributions from Author 0 (author_0_relevant_contributions) or Author 1 (author_1_relevant_contributions). At least one of these lists should be non-empty. Overall, our goal is to identify how novel Author 0's paper's contributions towards topic {topic_title} are by individually considering their contributions towards your subtopics. 
 
 Output your subtopics (up to {k}) in the following JSON format: 
-{{"subtopic_list":
-    [
-        {{
-            "topic_title": <should be a brief, 10-15 word string where the value is the title of your subtopic>,
-            "topic_description": <1-2 sentence string explaining the subtopic and what you feel would be most helpful for the papers to debate within the subtopic>,
-            "author_0_relevant_contributions": <list of integer IDs citing which contribution(s) from Author 0 would be most relevant to this subtopic; can be empty>,
-            "author_1_relevant_contributions": <list of integer IDs citing which contribution(s) from Author 1 would be most relevant to this subtopic; can be empty>
-        }},
-        ...
-    ]
+{{
+    "topic_title": <should be a brief, 15-20 word string where the value is the title of all the subtopics you would like the debate to cover>,
+    "topic_description": <1-2 sentence string explaining the subtopics and what you feel would be most helpful for the papers to debate within the subtopics>,
+    "author_0_relevant_contributions": <list of integer IDs citing which contribution(s) from Author 0 would be most relevant to this subtopic; can be empty>,
+    "author_1_relevant_contributions": <list of integer IDs citing which contribution(s) from Author 1 would be most relevant to these subtopics; can be empty>
 }}
 
 """
-        logits_processor = JSONLogitsProcessor(schema=subtopic_list_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+        logits_processor = JSONLogitsProcessor(schema=subtopic_schema, llm=self.model.llm_engine)
+        sampling_params = SamplingParams(max_tokens=3000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
         
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)
 
-        return outputs['subtopic_list']
+        return outputs
     
     def is_expand(self, round: DebateNode, history, temperature=0.1, top_p=0.99):
         """
@@ -164,7 +146,7 @@ Output your argument in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text).lower()
         print(f'IS EXPAND {outputs}')
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)
 
         return (("yes" in outputs['progression_of_arguments']) or ("yes" in outputs['meaningful_questions'])) and ("no" in outputs['clear_winner'])
@@ -193,14 +175,14 @@ Your task is to write a synthesis of the debate that summarizes the similarities
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)['summary']
         return outputs
 
     def summarize_path_debate(self, paper_authors, root_topic, tree, temperature=0.4, top_p=0.99):
         
         logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
         prompt = f"""Two authors are debating their respective novelties with respect to the following topic:
 Topic: {root_topic['topic_title']}
@@ -208,22 +190,21 @@ Topic: {root_topic['topic_title']}
 Author 0's paper title is: {paper_authors[0].paper.title}
 Author 1's paper title is: {paper_authors[1].paper.title}
 
-Here is a breakdown of their debates in a tree dictionary format. The debate tree can be interpreted as a debate starting from the root node topic and branching out into different child nodes based on different arguments brought up by each author. The debate path ends when either there is no progression in the authors' arguments or an author has clearly won with respect to novelty. At each tree node, we provide the topic, 'description' of the topic, Author 0's corresponding argument (author_0_argument), and Author 1's corresponding argument (author_0_argument) regarding the topic:
+Here is a breakdown of their debate. The debate ends when either there is no progression in the authors' arguments or an author has clearly won with respect to novelty. At each debate round, we provide the topic, 'description' of the topic, Author 0's corresponding argument (author_0_argument), and Author 1's corresponding argument (author_0_argument) regarding the topic:
 
 {tree}
 
-Based on the debate breakdown, output an approximately paragraph-long synthesis of the debate which summarizes the similarities and differences between the papers. Loosely structure your summary with initially their similarities (which ideas/aspects overlap between the two papers?) to their differences (what makes the papers unique) in novelties strictly based the information discussed within the debate. Focus more on the differences than the similarities. ENSURE that your output summary is specific and detailed-- no high-level, loose claims unsupported by evidence. Write it as if you were an expert on the topic.
+Based on the debate, output an approximately paragraph-long synthesis of the debate which summarizes the similarities and differences between the papers. Loosely structure your summary with initially their similarities (which ideas/aspects overlap between the two papers?) to their differences (what makes the papers unique) in novelties strictly based the information discussed within the debate. Focus more on the differences than the similarities.
 
 Format your output in the following JSON schema:
 {{
-    "summary": <5-20 sentence string to summarize the similarities and differences between the two papers identified within the debate tree>
+    "summary": <5-20 sentence string to summarize the similarities and differences between the two papers identified within the debate>
 }}
 """
         # conversation = history.extend(conversation)
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        
         log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)['summary']
         return outputs

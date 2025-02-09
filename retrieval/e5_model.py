@@ -8,6 +8,7 @@ from math import ceil
 from tqdm import tqdm
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
+from adapters import AutoAdapterModel
 from typing import List
 
 from joblib import Memory
@@ -121,10 +122,13 @@ def e5_embed(text_list: List[str], batch_size=64):
     # res = e5(text_list)
     # return res
 
+    # embedding_model_name = 'allenai/specter2_base'
     embedding_model_name = 'BAAI/bge-large-en-v1.5'
     embedding_tokenizer = AutoTokenizer.from_pretrained(embedding_model_name)
     embedding_tokenizer.max_subtokens_sequence_length = 512
     embedding_tokenizer.model_max_length = 512
+    # embedding_model = AutoAdapterModel.from_pretrained('allenai/specter2_base')
+    # embedding_model.load_adapter("allenai/specter2_adhoc_query", source="hf", load_as="specter2_adhoc_query", set_active=True, device_map='auto')
     embedding_model = AutoModel.from_pretrained(embedding_model_name, device_map='auto')
     embedding_model.eval()
 

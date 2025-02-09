@@ -1,4 +1,4 @@
-from paper_details import Paper
+from no_tree.paper_details import Paper
 from vllm import SamplingParams
 from outlines.serve.vllm import JSONLogitsProcessor
 from unidecode import unidecode
@@ -27,29 +27,25 @@ def format_debate_context(you, opposition, parent_debate_node, debate_node):
     
     your_contributions = debate_node.round_topic['author_0_relevant_contributions'] if you.id == 0 else debate_node.round_topic['author_1_relevant_contributions']
     if len(your_contributions) > 0:
-        total_conts = len(parent_debate_node.self_delib[you.id])
         out += f"""Here are your (Author {you.id}) claimed contributions towards the topic:\n"""
         for idx, cont in enumerate(your_contributions):
-            if (cont - 1) < total_conts:
-                arg = parent_debate_node.self_delib[you.id][cont-1]
-                out += f"Author {you.id} Paper's Contribution #{idx+1}: {arg['argument_title']}: {arg['description']}\n"
-                out += f"{format_evidence(parent_debate_node.evidence[you.id], you, arg['evidence'])}"
-                arg_key = f"{arg['argument_title']}: {arg['description']}"
-                out += f'{format_preemption(you, parent_debate_node.preemption[opposition.id][arg_key])}\n'
+            arg = parent_debate_node.self_delib[you.id][cont-1]
+            out += f"Author {you.id} Paper's Contribution #{idx+1}: {arg['argument_title']}: {arg['description']}\n"
+            out += f"{format_evidence(parent_debate_node.evidence[you.id], you, arg['evidence'])}"
+            arg_key = f"{arg['argument_title']}: {arg['description']}"
+            out += f'{format_preemption(you, parent_debate_node.preemption[opposition.id][arg_key])}\n'
     else:
         out += f"""Here are some additional excerpts from your paper that may help you:\n{format_evidence(parent_debate_node.evidence[you.id], you)}\n"""
     
     opp_contributions = debate_node.round_topic['author_0_relevant_contributions'] if opposition.id == 0 else debate_node.round_topic['author_1_relevant_contributions']
     if len(opp_contributions) > 0:
-        total_conts = len(parent_debate_node.self_delib[opposition.id])
         out += f"""Here are your opposition's (Author {opposition.id}) claimed contributions towards the topic:\n"""
         for idx, cont in enumerate(opp_contributions):
-            if (cont - 1) < total_conts:
-                arg = parent_debate_node.self_delib[opposition.id][cont-1]
-                out += f"Author {opposition.id} Paper's Contribution #{idx+1}: {arg['argument_title']}: {arg['description']}\n"
-                out += f"{format_evidence(parent_debate_node.evidence[opposition.id], opposition, arg['evidence'])}"
-                arg_key = f"{arg['argument_title']}: {arg['description']}"
-                out += f"{format_preemption(opposition, parent_debate_node.preemption[you.id][arg_key])}\n"
+            arg = parent_debate_node.self_delib[opposition.id][cont-1]
+            out += f"Author {opposition.id} Paper's Contribution #{idx+1}: {arg['argument_title']}: {arg['description']}\n"
+            out += f"{format_evidence(parent_debate_node.evidence[opposition.id], opposition, arg['evidence'])}"
+            arg_key = f"{arg['argument_title']}: {arg['description']}"
+            out += f"{format_preemption(opposition, parent_debate_node.preemption[you.id][arg_key])}\n"
     else:
         out += f"""Here are some additional excerpts from the opposition's paper that may help you:\n{format_evidence(parent_debate_node.evidence[opposition.id], opposition)}\n"""
     
@@ -86,38 +82,34 @@ class relevance_schema(BaseModel):
     clarifies_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
     irrelevant_to_claim : Annotated[str, StringConstraints(strip_whitespace=True)]
 
-def log_llm(log_file, prompt, output):
-    with open(log_file, 'a+') as f:
+def log_llm(log_dir, prompt, output):
+    with open(f'{log_dir}/llm_calls.txt', 'a+') as f:
         f.write('--------------------------------------------\n')
         f.write(f'PROMPT: {prompt}\n')
         f.write(f'OUTPUT: {output}\n')
         f.write('--------------------------------------------\n\n')
 
 class PaperAuthor:
-    def __init__(self, model, id, paper: Paper, focus, log_file, is_retrieval):
+    def __init__(self, model, id, paper: Paper, focus, log_dir):
         self.model = model # define model - Llama 3.1
         self.paper = paper
         self.focus = focus
         self.id = id
-        self.log_file = log_file
-        self.is_retrieval = is_retrieval
+        self.log_dir = log_dir
 
-    def gather_evidence(self, topic, k=5, return_scores=True):
+    def gather_evidence(self, topic, k=2, return_scores=True):
         """
         Use paper chunks to get relevant segments to the topic.
         """
-        if self.is_retrieval:
-            retrievals = self.paper.retrieve_top_k(topic, k=k)
-            evidence, scores = [], []
-            for retrieval in retrievals:
-                evidence.append(retrieval[0])
-                scores.append(retrieval[1])
-            if return_scores:
-                return evidence, scores
-            return evidence
-        else:
-            # return [self.paper.abstract], [0]
-            return [self.paper.abstract + " " + self.paper.introduction], [0]
+
+        retrievals = self.paper.retrieve_top_k(topic, k=k)
+        evidence, scores = [], []
+        for retrieval in retrievals:
+            evidence.append(retrieval[0])
+            scores.append(retrieval[1])
+        if return_scores:
+            return evidence, scores
+        return evidence
 
     def generate_arguments(self, topic, evidence=False, temperature=0.3, top_p=0.99, k=3):
         """
@@ -139,7 +131,7 @@ class PaperAuthor:
 
         
         formatted_evidence = format_evidence(evidence, self)
-        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\n\nBased on the evidence, output a list of 1 to {k} DIVERSE, specific, evidence-driven arguments for your position that are all supported by the evidence. Each argument should have a corresponding "argument_title", which is a brief statement of your argument (e.g., Better Efficiency for Training), a "description" explaining your argument and mentioning specific excerpts from your evidence pool, and finally, a list of all "evidence" IDs, which are the integers of the evidence in the input list, that best support your argument. For example, if Evidence #1 and #2 best support your argument, then evidence should be [1,2] (depending on your argument, this list can have more or less than two items). Each argument should make a unique point.
+        prompt += f"""Below is a list of relevant evidence retrieved from your paper:\n\n{formatted_evidence}\n\nBased on the evidence, output a list of 1 to {k} DIVERSE, specific arguments for your position that are all supported by the evidence. Each argument should have a corresponding "argument_title", which is a brief statement of your argument (e.g., Better Efficiency for Training), a "description" explaining your argument and mentioning specific excerpts from your evidence pool, and finally, a list of all "evidence" IDs, which are the integers of the evidence in the input list, that best support your argument. For example, if Evidence #1 and #2 best support your argument, then evidence should be [1,2] (depending on your argument, this list can have more or less than two items). Each argument should make a unique point.
         
 Output your list of arguments in the following JSON format:
 {{
@@ -147,7 +139,7 @@ Output your list of arguments in the following JSON format:
         [
             {{
                 "argument_title": <should be a brief, 10-15 word string where the value is the argument_title>,
-                "description": <1-2 sentence string explaining the argument, including specific excerpts from the evidence pool; this should be evidence-driven-- no unsupported, superficial arguments>,
+                "description": <1-2 sentence string explaining the argument, including specific excerpts from the evidence pool>,
                 "evidence": <list of integer IDs citing which evidence from the input list best support your argument>
             }}
         ]
@@ -155,7 +147,7 @@ Output your list of arguments in the following JSON format:
 """
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params)[0].outputs[0].text)
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         return json.loads(outputs)['argument_list']
     
     
@@ -184,7 +176,7 @@ Output your list of arguments in the following JSON format:
             text = json.loads(i.outputs[0].text.strip().lower())
             if ("no" in text['irrelevant_to_claim']) and (("yes" in text['supports_claim']) or ("yes" in text['refutes_claim']) or ("yes" in text['clarifies_claim'])):
                 refined_evidence.append(evidences[ind])
-            log_llm(self.log_file, prompts[ind], text)
+            log_llm(self.log_dir, prompts[ind], text)
             
         if len(refined_evidence) == 0:
             return [f'We do not address the opposition\'s claim: {topic}']
@@ -226,7 +218,7 @@ Output your list of arguments in the following JSON format:
 
 {format_debate_context(self, opposition, parent_debate_node, debate_node)}
 
-Given the above, make an argument for a specific reason why your contributions towards the topic, {round_topic['topic_title']}, are better than the opposition's. If you feel that you do not contribute to the given topic or your contributions ARE NOT better than the opposition's, then state so by conceding to the opposition (e.g., 'I do not believe my paper makes a better contribution than yours') and explain why. ENSURE that your argument is specific and detailed-- no high-level, loose claims unsupported by evidence.
+Given the above, make an argument for a specific reason why your contributions towards the topic, {round_topic['topic_title']}, are better than the opposition's. If you feel that you do not contribute to the given topic or your contributions ARE NOT better than the opposition's, then state so by conceding to the opposition (e.g., 'I do not believe my paper makes a better contribution than yours') and explain why. 
 
 Output your argument in the following JSON format:
 
@@ -239,7 +231,7 @@ Output your argument in the following JSON format:
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
 
         return json.loads((outputs))
 
@@ -280,7 +272,7 @@ Output your argument in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         return json.loads(outputs)
     
     def revise_argument(self, history, debate_node, parent_debate_node, opposition, temperature=0.45, top_p=0.99):
@@ -300,7 +292,7 @@ Output your argument in the following JSON format:
 {format_debate_context(self, opposition, parent_debate_node, debate_node)}
 """
         
-        prompt+= f"""Based on the debate history and your/your opposition's arguments and evidence, you must construct a new, stronger argument related to the topic. This consists of an argument that addresses/is robust to any doubts or clarifying questions made by the opposition which you feel are valid. If based on the debate, you feel that you do not contribute to the given topic or your contributions ARE NOT better than the opposition's, then state so by conceding to the opposition (e.g., 'I do not believe my paper makes a better contribution than yours') and explain why. ENSURE that your revised argument is specific and detailed-- no high-level, loose claims unsupported by evidence.\n\n""" + history
+        prompt+= f"""Based on the debate history and your/your opposition's arguments and evidence, you must construct a new, stronger argument related to the topic. This consists of an argument that addresses/is robust to any doubts or clarifying questions made by the opposition which you feel are valid. If based on the debate, you feel that you do not contribute to the given topic or your contributions ARE NOT better than the opposition's, then state so by conceding to the opposition (e.g., 'I do not believe my paper makes a better contribution than yours') and explain why. \n\n""" + history
         
         prompt += f"""\nOutput your new, revised argument in the following JSON format:
 {{
@@ -315,5 +307,5 @@ Output your argument in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         return json.loads(outputs)
