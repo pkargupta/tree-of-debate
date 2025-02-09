@@ -30,15 +30,6 @@ class subtopic_schema(BaseModel):
 class subtopic_list_schema(BaseModel):
     subtopic_list : conlist(subtopic_schema, min_length=1, max_length=10)
 
-
-class sim_schema(BaseModel):
-    similarities: Annotated[str, StringConstraints(strip_whitespace=True)]
-    description: Annotated[str, StringConstraints(strip_whitespace=True)]
-    
-class diff_schema(BaseModel):
-    differences: Annotated[str, StringConstraints(strip_whitespace=True)]
-    description: Annotated[str, StringConstraints(strip_whitespace=True)]
-
 def arg_dict_to_str(args, arg_type=True):
     arguments = ""
     for i, key in enumerate(args.keys()):
@@ -79,11 +70,11 @@ def format_self_deliberation(debate_node, paper_authors):
     return out
 
 class Moderator:
-    def __init__(self, model, log_file):
+    def __init__(self, model, log_dir):
         self.model = model # define model - Llama 3.
-        self.log_file = log_file
+        self.log_dir = log_dir
 
-    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=3, temperature=0.3, top_p=0.99):
+    def generate_topics(self, round: DebateNode, parent_topic, paper_authors, k=5, temperature=0.3, top_p=0.99):
         topic_title = parent_topic['topic_title']
         prompt = f"""You are a fair and balanced moderator of a debate between two authors determining their respective novel contributions towards the following topic:
 Topic: {parent_topic['topic_title']}
@@ -116,7 +107,7 @@ Output your subtopics (up to {k}) in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
         
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)
 
         return outputs['subtopic_list']
@@ -164,7 +155,7 @@ Output your argument in the following JSON format:
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text).lower()
         print(f'IS EXPAND {outputs}')
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)
 
         return (("yes" in outputs['progression_of_arguments']) or ("yes" in outputs['meaningful_questions'])) and ("no" in outputs['clear_winner'])
@@ -193,7 +184,7 @@ Your task is to write a synthesis of the debate that summarizes the similarities
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        log_llm(self.log_file, prompt, outputs)
+        log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)['summary']
         return outputs
 
@@ -223,7 +214,6 @@ Format your output in the following JSON schema:
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        
         log_llm(self.log_dir, prompt, outputs)
         outputs = json.loads(outputs)['summary']
         return outputs
