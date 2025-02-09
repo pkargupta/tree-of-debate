@@ -1,16 +1,16 @@
 import pickle
 import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = "0,1,2,3"
-from debate import DebateNode
-from paper_details import Paper
-from persona import PaperAuthor
-from moderator import Moderator
+from no_tree.debate import DebateNode
+from no_tree.paper_details import Paper
+from no_tree.persona import PaperAuthor
+from no_tree.moderator import Moderator
 import argparse
 from typing import List
 from vllm import LLM
 import os
 import json
-from data_pairer import parse_papers, parse_papers_url
+from no_tree.data_pairer import parse_papers, parse_papers_url
 
 def print_path(node: DebateNode, prefix=""):
     if len(node.children) == 0:
@@ -63,7 +63,7 @@ def collect_evidence(evidence, subtrees):
     return evidence
     
 
-def run_code(args, f_pap, c_pap, model_server):
+def run_no_tree_code(args, f_pap, c_pap, model_server):
 
     focus_paper = PaperAuthor(
         model = model_server,
@@ -90,9 +90,6 @@ def run_code(args, f_pap, c_pap, model_server):
         with open(os.path.join(args.log_dir, 'self_deliberation.txt'), 'w') as f:
             f.write(f'Topic: {args.topic}\n\n')
 
-        with open(f'{args.log_dir}/llm_calls.txt', 'w') as f:
-            f.write(f'LLM Calls:\n')
-
     # each node has a topic
     root_node = DebateNode(leaf_node_label)
     all_evidence = {p.id:[] for p in paper_authors}
@@ -108,7 +105,7 @@ def run_code(args, f_pap, c_pap, model_server):
     debated_rounds = [root_node]
 
     depth = 0
-    max_depth = 3
+    max_depth = 5
 
     while len(queue_of_rounds) > 0:
         round = queue_of_rounds.pop(0)
@@ -122,10 +119,10 @@ def run_code(args, f_pap, c_pap, model_server):
             depth += 1
 
     conversation_history = ''.join(conversation_history)
-    with open(f'{args.log_dir}/conversation_history.txt', 'w') as f:
+    with open(f'{args.log_dir}/{args.experiment}_conversation_history.txt', 'w') as f:
         f.write(conversation_history)
 
-    with open(f'{args.log_dir}/evidence.txt', 'w') as f:
+    with open(f'{args.log_dir}/{args.experiment}_evidence.txt', 'w') as f:
         for author_id, e in all_evidence.items():
             unique_e = list(set(e))
             f.write(str(unique_e))
@@ -149,17 +146,17 @@ def run_code(args, f_pap, c_pap, model_server):
     #     f.write(summary)
 
     paths, tree_dict = print_path(root_node)
-    with open(f'{args.log_dir}/path.txt', 'w') as f:
+    with open(f'{args.log_dir}/{args.experiment}_path.txt', 'w') as f:
         f.write("\n\n\n\n\n")
         f.write("PATHS:\n")
         f.write(paths)
 
 
-    with open(f'{args.log_dir}/tree.json', 'w', encoding='utf-8') as f:
+    with open(f'{args.log_dir}/{args.experiment}_tree.json', 'w', encoding='utf-8') as f:
         json.dump(tree_dict, f, ensure_ascii=False, indent=4)
 
     path_summary = moderator.summarize_path_debate(paper_authors, leaf_node_label, json.dumps(tree_dict, indent=2))
-    with open(f'{args.log_dir}/path_summary.txt', 'w') as f:
+    with open(f'{args.log_dir}/{args.experiment}_summary.txt', 'w') as f:
         f.write(path_summary)
 
     # with open('temp.pkl', 'wb+') as f:

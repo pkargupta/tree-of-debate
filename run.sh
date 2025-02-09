@@ -20,7 +20,12 @@ export TRITON_LIBCUDA_PATH=/usr/local/cuda/compat/lib.real #WORKS MUST DO!
 # 	}' 
 
 # rm -rf logs/*
-focus_paper="2404_02078.json" # treeinstruct
-cited_paper="2406_09136.json" # bridge
-topic="using preferences to train language models for better reasoning"
-python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "$topic"
+
+# focus_paper="2006_08591.json" # treeinstruct
+# cited_paper="2006_08656.json" # bridge
+# topic="deep equilibrium models"
+# python tree_of_debate.py --focus_paper $focus_paper --cited_paper $cited_paper --topic "$topic"
+
+python final_run.py --experiment "tod"
+# python final_run.py --experiment "single"
+# python final_run.py --experiment "two"

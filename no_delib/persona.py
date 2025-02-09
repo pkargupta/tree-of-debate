@@ -1,4 +1,4 @@
-from paper_details import Paper
+from no_delib.paper_details import Paper
 from vllm import SamplingParams
 from outlines.serve.vllm import JSONLogitsProcessor
 from unidecode import unidecode
@@ -12,19 +12,23 @@ def format_debate_context(you, opposition, parent_debate_node, debate_node):
     
     your_contributions = debate_node.round_topic['author_0_relevant_contributions'] if you.id == 0 else debate_node.round_topic['author_1_relevant_contributions']
     if len(your_contributions) > 0:
+        total_conts = len(parent_debate_node.self_delib[you.id])
         out += f"""Here are your (Author {you.id}) claimed contributions towards the topic:\n"""
         for idx, cont in enumerate(your_contributions):
-            arg = parent_debate_node.self_delib[you.id][cont-1]
-            out += f"Author {you.id} Paper's Contribution #{idx+1}: {arg['argument_title']}: {arg['description']}\n"
+            if (cont - 1) < total_conts:
+                arg = parent_debate_node.self_delib[you.id][cont-1]
+                out += f"Author {you.id} Paper's Contribution #{idx+1}: {arg['argument_title']}: {arg['description']}\n"
     else:
         out += f"""Here is your paper's introduction, which may help you:\n{you.paper.introduction}\n"""
     
     opp_contributions = debate_node.round_topic['author_0_relevant_contributions'] if opposition.id == 0 else debate_node.round_topic['author_1_relevant_contributions']
     if len(opp_contributions) > 0:
+        total_conts = len(parent_debate_node.self_delib[opposition.id])
         out += f"""Here are your opposition's (Author {opposition.id}) claimed contributions towards the topic:\n"""
         for idx, cont in enumerate(opp_contributions):
-            arg = parent_debate_node.self_delib[opposition.id][cont-1]
-            out += f"Author {opposition.id} Paper's Contribution #{idx+1}: {arg['argument_title']}: {arg['description']}\n"
+            if (cont - 1) < total_conts:
+                arg = parent_debate_node.self_delib[opposition.id][cont-1]
+                out += f"Author {opposition.id} Paper's Contribution #{idx+1}: {arg['argument_title']}: {arg['description']}\n"
     else:
         out += f"""Here is your opposition's introduction, which may help you:\n{opposition.paper.introduction}\n"""
     
@@ -38,7 +42,7 @@ def format_args(list_arg):
 
 class revise_schema(BaseModel):
     revised_argument_title: Annotated[str, StringConstraints(strip_whitespace=True)]
-    revised_argument_description: Annotated[str, StringConstraints(strip_whitespace=True, min_length=10)]
+    revised_argument_description: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5)]
 
 class argument_schema(BaseModel):
     argument_title: Annotated[str, StringConstraints(strip_whitespace=True)]
@@ -52,10 +56,10 @@ class gen_argument_schema(BaseModel):
     description: Annotated[str, StringConstraints(strip_whitespace=True)]
     
 class argument_list_schema(BaseModel):
-    argument_list : conlist(gen_argument_schema, min_length=1,max_length=10)
+    argument_list : conlist(gen_argument_schema, min_length=1,max_length=5)
 
 def log_llm(log_dir, prompt, output):
-    with open(f'{log_dir}/llm_calls.txt', 'a+') as f:
+    with open(f'{log_dir}/llm_calls.txt', 'a+', encoding="utf-8") as f:
         f.write('--------------------------------------------\n')
         f.write(f'PROMPT: {prompt}\n')
         f.write(f'OUTPUT: {output}\n')
@@ -76,7 +80,7 @@ class PaperAuthor:
         If the paper is NOT a focus paper, the topic should be the focus paper's arguments.
         """
         logits_processor = JSONLogitsProcessor(schema=argument_list_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+        sampling_params = SamplingParams(max_tokens=3000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
         prompt = f"You are the author of the paper, '{self.paper.title}'. The abstract of your work is:\n{self.paper.abstract}.\n The introduction of your work is: {self.paper.introduction}.\n\nYou are debating another author on the novel contributions that your work makes towards the following topic:\n"
 
@@ -100,10 +104,18 @@ Output your list of arguments in the following JSON format:
         ]
 }}
 """
-        outputs = unidecode(self.model.generate(prompt,
-                    sampling_params=sampling_params)[0].outputs[0].text)
+        raw_out = self.model.generate(prompt, sampling_params=sampling_params)
+        outputs = raw_out[0].outputs[0].text
         log_llm(self.log_dir, prompt, outputs)
-        return json.loads(outputs)['argument_list']
+
+        try:
+            out = json.loads(fr'{outputs}')['argument_list']
+            for arg_id, arg in enumerate(out):
+                out[arg_id]["argument_title"] = unidecode(arg["argument_title"]).replace("\"", "'")
+                out[arg_id]["description"] = unidecode(arg["description"]).replace("\"", "'")
+        except:
+            raise Exception(f"JSON ISSUE:\n\n{outputs}")
+        return out
 
     def present_argument(self, debate_node, parent_debate_node, opposition, temperature=0.1, top_p=0.99):
         """

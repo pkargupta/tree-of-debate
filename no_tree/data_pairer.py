@@ -17,11 +17,7 @@ import json
 from nltk import word_tokenize
 
 def extract_text(pdf_url):
-    try:
-        raw_extracted_text = arxiv_to_text(pdf_url).strip()
-    except:
-        raise Exception(f"PDF Link INVALID! {pdf_url}")
-        
+    raw_extracted_text = arxiv_to_text(pdf_url).strip()
     raw_extracted_text = unidecode(raw_extracted_text)
 
     printable = set(string.printable)

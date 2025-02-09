@@ -1,11 +1,11 @@
 from vllm import SamplingParams
 from outlines.serve.vllm import JSONLogitsProcessor
 from unidecode import unidecode
-from persona import log_llm
+from no_delib.persona import log_llm
 import json
 from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
-from debate import DebateNode
+from no_delib.debate import DebateNode
 
 class summary_schema(BaseModel):
     summary: Annotated[str, StringConstraints(strip_whitespace=True, min_length=50)]
@@ -139,10 +139,10 @@ Output your argument in the following JSON format:
 
         return (("yes" in outputs['progression_of_arguments']) or ("yes" in outputs['meaningful_questions'])) and ("no" in outputs['clear_winner'])
 
-    def summarize_path_debate(self, paper_authors, root_topic, path, temperature=0.4, top_p=0.99):
+    def summarize_path_debate(self, paper_authors, root_topic, tree, temperature=0.4, top_p=0.99):
         
         logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+        sampling_params = SamplingParams(max_tokens=2048, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
 
         prompt = f"""Two authors are debating their respective novelties with respect to the following topic:
 Topic: {root_topic['topic_title']}
@@ -150,15 +150,15 @@ Topic: {root_topic['topic_title']}
 Author 0's paper title is: {paper_authors[0].paper.title}
 Author 1's paper title is: {paper_authors[1].paper.title}
 
-Here is a breakdown of their debates in tree format. At each tree node, we provide the topic_title:topic description, Author 0's corresponding argument and Author 1's corresponding argument:
+Here is a breakdown of their debates in a tree dictionary format. The debate tree can be interpreted as a debate starting from the root node topic and branching out into different child nodes based on different arguments brought up by each author. The debate path ends when either there is no progression in the authors' arguments or an author has clearly won with respect to novelty. At each tree node, we provide the topic, 'description' of the topic, Author 0's corresponding argument (author_0_argument), and Author 1's corresponding argument (author_0_argument) regarding the topic:
 
-{path}
+{tree}
 
-Based on the debate breakdown, output a paragraph-long synthesis of the debate which summarizes the similarities and differences between the papers. Structure your summary with initially their similarities (which ideas/aspects overlap between the two papers?) to their differences (what makes the papers unique) in novelties. Focus more on the differences than the similarities.
+Based on the debate breakdown, output an approximately paragraph-long synthesis of the debate which summarizes the similarities and differences between the papers. Loosely structure your summary with initially their similarities (which ideas/aspects overlap between the two papers?) to their differences (what makes the papers unique) in novelties strictly based the information discussed within the debate. Focus more on the differences than the similarities.
 
 Format your output in the following JSON schema:
 {{
-    "summary": <5-10 sentence string to summarize the similarities and differences between the two papers>
+    "summary": <5-20 sentence string to summarize the similarities and differences between the two papers identified within the debate tree>
 }}
 """
         # conversation = history.extend(conversation)
