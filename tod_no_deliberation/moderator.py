@@ -15,10 +15,10 @@ class summary_schema(BaseModel):
 #     is_expand: bool
 
 class expansion_schema(BaseModel):
-    explanation: Annotated[str, StringConstraints(strip_whitespace=True)]
-    progression_of_arguments: Annotated[str, StringConstraints(strip_whitespace=True)]
-    meaningful_questions: Annotated[str, StringConstraints(strip_whitespace=True)]
-    clear_winner: Annotated[str, StringConstraints(strip_whitespace=True)]
+    explanation: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5)]
+    progression_of_arguments: bool
+    meaningful_questions: bool
+    clear_winner: bool
 
 class subtopic_schema(BaseModel):
     topic_title: Annotated[str, StringConstraints(strip_whitespace=True)]
@@ -58,23 +58,15 @@ def format_evidence(list_evi, author, ids=None):
             idx += 1
     return text_evi
 
-def format_preemption(author, list_pre):
-    text_pre = f"\t- Author {1-author.id}'s relevant evidence to potentially counter the novelty of this contribution:\n"
-    for e_id, e in enumerate(list_pre):
-        text_pre += f"\t\t- Author {1-author.id}'s Counter Evidence #{e_id+1}: The opposition states, \"{e}\"\n"
-    return text_pre
-
 def format_self_deliberation(debate_node, paper_authors):
     out = ""
     for author in paper_authors:
         out += f"Author {author.id} Paper Title: {author.paper.title}\n"
         out += f"Author {author.id} Paper Abstract: {author.paper.abstract}\n\n"
+        out += f"Author {author.id} Paper Introduction: {author.paper.introduction}\n\n"
 
         for no, arg in enumerate(debate_node.self_delib[author.id]):
             out += f"Author {author.id} Paper's Contribution #{no+1}: {arg['argument_title']}: {arg['description']}\n"
-            out += f"{format_evidence(debate_node.evidence[author.id], author, arg['evidence'])}"
-            arg_key = f"{arg['argument_title']}: {arg['description']}"
-            out += f"{format_preemption(author, debate_node.preemption[1-author.id][arg_key])}\n"
     
     return out
 
@@ -93,7 +85,7 @@ Here are the two papers and their claimed novel contributions with corresponding
 
 {format_self_deliberation(round, paper_authors)}
 
-Based on each of the author's claimed novelties, evidence, and counter-evidence to each other's arguments, you must determine the most meaningful, diverse set of subtopics within the parent topic, {topic_title}, which best cover the types of contributions each of the papers make. Remember that for each of your selected topics, the papers will be debating which of them makes the better contribution towards the topic. Hence, for each of your subtopics, cite the integer IDs of any relevant contributions from Author 0 (author_0_relevant_contributions) or Author 1 (author_1_relevant_contributions). At least one of these lists should be non-empty. Overall, our goal is to identify how novel Author 0's paper's contributions towards topic {topic_title} are by individually considering their contributions towards your subtopics. 
+Based on each of the author's claimed novelties, you must determine the most meaningful, diverse set of subtopics within the parent topic, {topic_title}, which best cover the types of contributions each of the papers make. Remember that for each of your selected topics, the papers will be debating which of them makes the better contribution towards the topic. Hence, for each of your subtopics, cite the integer IDs of any relevant contributions from Author 0 (author_0_relevant_contributions) or Author 1 (author_1_relevant_contributions). At least one of these lists should be non-empty. Overall, our goal is to identify how novel Author 0's paper's contributions towards topic {topic_title} are by individually considering their contributions towards your subtopics. 
 
 Output your subtopics (up to {k}) in the following JSON format: 
 {{"subtopic_list":
@@ -121,14 +113,14 @@ Output your subtopics (up to {k}) in the following JSON format:
 
         return outputs['subtopic_list']
     
-    def is_expand(self, round: DebateNode, history, temperature=0.1, top_p=0.99):
+    def is_expand(self, round: DebateNode, history):
         """
         Based on the previous arguments and the new arguments, determine if any progress has been made.
         """
         prev_args = arg_dict_to_str(round.init_arguments, True)
         new_args = arg_dict_to_str(round.final_arguments, False)
         logits_processor = JSONLogitsProcessor(schema=expansion_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
         round_topic = round.round_topic
         
@@ -148,33 +140,33 @@ Below, you are given the previous set of arguments and the current set of argume
 -------
 
 You must determine whether progress is being made. DO NOT focus on the language being used. Focus on the content of the arguments. Specifically, determine the following (True or False for each):
-1. progression_of_arguments: Are these arguments sufficiently different enough to necesitate further debate? Are there new, deeper concepts being discussed between the two sets of arguments? Return "Yes" or "No".
-2. meaningful_questions: Within the debate history, each author acknowledges each other's arguments and may ask clarifying questions accordingly. Do you believe that the clarifying questions have not been sufficiently addressed already and would be important to answer through further debate? If there are no questions raised in the debate history by either author, return "No", otherwise "Yes".
-3. clear_winner: Do you believe that it is clear that one author has won the debate, and it does not need to be further deconstructured (in order to determine which components within each author's contributions are truly better)?  Return "Yes" or "No".
+1. progression_of_arguments: Are these arguments sufficiently different enough to necesitate further debate? Are there new, deeper concepts being discussed between the two sets of arguments?
+2. meaningful_questions: Within the debate history, each author acknowledges each other's arguments and may ask clarifying questions accordingly. Do you believe that the clarifying questions have not been sufficiently addressed already and would be important to answer through further debate? If there are no questions raised in the debate history by either author, return False.
+3. clear_winner: Do you believe that it is clear that one author has won the debate, and it does not need to be further deconstructured (in order to determine which components within each author's contributions are truly better)?
 
 Output your argument in the following JSON format: 
 {{
-    "explanation": <2-5 sentence string to explain your reasoning about whether further debate is necessary>,
-    "progression_of_arguments": <pick only one of "Yes" or "No" depending on the history, arguments, and your explanation above>,
-    "meaningful_questions": <pick only one of "Yes" or "No" depending on the history, arguments, and your explanation above>,
-    "clear_winner": <pick only one of "Yes" or "No" depending on the history, arguments, and your explanation above>
+    "explanation": <2-5 sentence string to explain your reasoning about whether further debate is necessary when comparing the \"previous arguments\" and the \"current arguments\">,
+    "progression_of_arguments": <output a boolean; pick only one of "True" or "False" depending on the history, arguments, and your explanation above>,
+    "meaningful_questions": <output a boolean; pick only one of "True" or "False" depending on the history, arguments, and your explanation above>,
+    "clear_winner": <output a boolean; pick only one of "True" or "False" depending on the history, arguments, and your explanation above>
 }}
 """
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
-                    use_tqdm=False)[0].outputs[0].text).lower()
+                    use_tqdm=False)[0].outputs[0].text)
         print(f'IS EXPAND {outputs}')
         log_llm(self.log_file, prompt, outputs)
         outputs = json.loads(outputs)
 
-        return (("yes" in outputs['progression_of_arguments']) or ("yes" in outputs['meaningful_questions'])) and ("no" in outputs['clear_winner'])
+        return (outputs['progression_of_arguments'] or outputs['meaningful_questions']) and (not outputs['clear_winner'])
 
-    def summarize_debate(self, conversation_history, similarities, differences, temperature=0.4, top_p=0.99):
+    def summarize_debate(self, conversation_history, similarities, differences):
         similarities = ",".join(similarities)
         differences = ",".join(differences)
 
         logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
         prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. Below, you are given the \"conversation_history\" between the authors, and the specific similarities and differences. The similarities and differences are from the point-of-view of Author 0.
 
@@ -186,7 +178,7 @@ Output your argument in the following JSON format:
 
 Your task is to write a synthesis of the debate that summarizes the similarities and differences between the papers. Focus more on the differences than the similarities. Format the output as a schema:
     {{
-        "summary": <5-10 sentence string to summarize the similarities and differences between the two papers>
+        "summary": <5-10 sentence string to summarize the similarities and differences between the two papesr>
     }}
 """
         # conversation = history.extend(conversation)
@@ -197,33 +189,67 @@ Your task is to write a synthesis of the debate that summarizes the similarities
         outputs = json.loads(outputs)['summary']
         return outputs
 
-    def summarize_path_debate(self, paper_authors, root_topic, tree, temperature=0.4, top_p=0.99):
+    def summarize_debate_all_paths(self, conversation_paths):
+        def generate_comparisons(comparison, comp_schema):
+            logits_processor = JSONLogitsProcessor(schema=comp_schema, llm=self.model.llm_engine)
+            sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
+
+            prompt = [f"""The authors of two papers have debated about their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. Below, you are given the \"conversation_history\" between the authors.
+
+\"conversation_history\":\n{conv_path}
+
+Your task is to determine the {comparison} between the papers according to the conversation. Format the output as a schema:
+{{"{comparison}_list":
+    [
+        {{
+            "{comparison}": <1-2 sentence string explaining the {comparison} between the two papers according to the conversation between Author 0 and Author 1.>,
+            "description": <1-2 sentence string explaining your rationale for the {comparison}>
+        }},
+        ...
+    ]
+}}
+""" for conv_path in conversation_paths]
+            # conversation = history.extend(conversation)
+            outputs = [json.loads(unidecode(text.outputs[0].text)) for text in self.model.generate(prompt,
+                        sampling_params=sampling_params,
+                        use_tqdm=False)]
+            outputs = [s[comparison] for s in outputs]
+            for p, o in prompt, outputs:
+                log_llm(self.log_file, p, o)
+            return outputs
+    
+        similarities = generate_comparisons("similarities", sim_schema)
+        differences = generate_comparisons("differences", diff_schema)
+        print(similarities)
+        print('\n\n')
+        print(differences)
+
+        return self.summarize_debate('\n'.join(conversation_paths), similarities, differences), similarities, differences
+
+    def summarize_debate_sub_paths(self, conversation_paths):
+        sub_sum_sim_diff = [self.summarize_debate_all_paths([conversation_path]) for conversation_path in conversation_paths]
+        sub_summaries = [f"SUB-SUMMARY #{(i+1)}:\n{sub_sum_sim_diff[i][0]}\n--------\n" for i in range(len(conversation_paths))]
+        sub_summaries = '\n'.join(sub_summaries)
+
+        sub_similarities = [sub_sum_sim_diff[i][1] for i in range(len(conversation_paths))]
+        sub_differences = [sub_sum_sim_diff[i][2] for i in range(len(conversation_paths))]
         
         logits_processor = JSONLogitsProcessor(schema=summary_schema, llm=self.model.llm_engine)
-        sampling_params = SamplingParams(max_tokens=2000, logits_processors=[logits_processor], temperature=temperature, top_p=top_p)
+        sampling_params = SamplingParams(max_tokens=1024, logits_processors=[logits_processor])
 
-        prompt = f"""Two authors are debating their respective novelties with respect to the following topic:
-Topic: {root_topic['topic_title']}
+        prompt = f"""The authors of two papers have debated about the similarities and differences between their papers. Author 0 is the author of the main paper, while Author 1 is the author of the paper being compared to the main paper. The debate consisted of a couple of topics, and below you are given \"sub_summaries\" for ecah topic that was discussed.
 
-Author 0's paper title is: {paper_authors[0].paper.title}
-Author 1's paper title is: {paper_authors[1].paper.title}
+\"sub_summaries\":\n{sub_summaries}
 
-Here is a breakdown of their debates in a tree dictionary format. The debate tree can be interpreted as a debate starting from the root node topic and branching out into different child nodes based on different arguments brought up by each author. The debate path ends when either there is no progression in the authors' arguments or an author has clearly won with respect to novelty. At each tree node, we provide the topic, 'description' of the topic, Author 0's corresponding argument (author_0_argument), and Author 1's corresponding argument (author_0_argument) regarding the topic:
-
-{tree}
-
-Based on the debate breakdown, output an approximately paragraph-long synthesis of the debate which summarizes the similarities and differences between the papers. Loosely structure your summary with initially their similarities (which ideas/aspects overlap between the two papers?) to their differences (what makes the papers unique) in novelties strictly based the information discussed within the debate. Focus more on the differences than the similarities. ENSURE that your output summary is specific and detailed-- no high-level, loose claims unsupported by evidence. Write it as if you were an expert on the topic.
-
-Format your output in the following JSON schema:
-{{
-    "summary": <5-20 sentence string to summarize the similarities and differences between the two papers identified within the debate tree>
-}}
+Your task is to write a synthesis of the debate that summarizes the all the \"sub_summaries\" of the debate. Format the output as a schema:
+    {{
+        \"summary\": <5-10 sentence string to summarize the \"sub_summaries\">
+    }}
 """
         # conversation = history.extend(conversation)
         outputs = unidecode(self.model.generate(prompt,
                     sampling_params=sampling_params,
                     use_tqdm=False)[0].outputs[0].text)
-        
-        log_llm(self.log_dir, prompt, outputs)
+        log_llm(self.log_file, prompt, outputs)
         outputs = json.loads(outputs)['summary']
-        return outputs
+        return outputs, sub_similarities, sub_differences

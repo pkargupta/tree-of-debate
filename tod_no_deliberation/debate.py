@@ -40,16 +40,11 @@ class DebateNode:
 
     def conduct_self_deliberation(self, topic, paper_authors: List[PaperAuthor], moderator, log=None, num_evidence=5, num_arg=3):
         focus_paper = None
+        
         for paper_author in paper_authors:
-            # gather evidence
-            evidence, scores = paper_author.gather_evidence(topic_dict_to_str(topic), k=num_evidence, return_scores=True)
-
-            if paper_author.id not in self.evidence.keys(): self.evidence[paper_author.id] = []
-            self.evidence[paper_author.id].extend(evidence)
-
             # develop k arguments
             if paper_author.id not in self.self_delib.keys(): self.self_delib[paper_author.id] = []
-            author_args = paper_author.generate_arguments(topic, evidence, k=num_arg)
+            author_args = paper_author.generate_arguments(topic, k=num_arg)
             self.self_delib[paper_author.id].extend(author_args)
 
             # check if paper is the focus
@@ -60,38 +55,12 @@ class DebateNode:
             if log is not None:
                 with open(os.path.join(log, 'self_deliberation.txt'), 'a') as f:
                     f.write(f'Topic: {topic}\n\n')
-                    f.write(f'Gather Evidence:\n\n')
-                    temp = "\n".join([f'{s} - {e}' for s, e in zip(scores, evidence)])
-                    f.write(f'{paper_author.focus} paper:\n{temp}\n\n')
 
                     f.write(f'Develop Arguments:\n\n')
                     temp = ""
                     for i, arg in enumerate(author_args):
-                        temp += f"Argument #{i+1} - {arg['argument_title']}.\n\t{arg['description']}\n\t{arg['evidence']}\n"
+                        temp += f"Argument #{i+1} - {arg['argument_title']}.\n\t{arg['description']}\n"
                     f.write(f'{paper_author.focus} paper:\n{temp}\n\n')
-        
-        # preemption
-        ## for each other paper author, collect their respective arguments/evidence
-        for i in range(len(paper_authors)):
-            other_arguments = []
-            for j in range(len(paper_authors)):
-                if j != i:
-                    other_arguments.extend([a for a in self.self_delib[paper_authors[j].id]])
-
-            if paper_authors[i].id not in self.preemption.keys(): self.preemption[paper_authors[i].id] = {}
-            self.preemption[paper_authors[i].id].update(paper_authors[i].preempt_arguments(other_arguments))
-            
-            # logging
-            if log is not None:
-                with open(os.path.join(log, 'self_deliberation.txt'), 'a') as f:
-                    f.write(f'Preemption:\n\n')
-                    temp = ""
-                    for key in self.preemption.keys():
-                        temp += f"\t{key}\n"
-                        for j, p in enumerate(self.preemption[key]):
-                            temp += f"\t\tPreemptive Arg #{j+1}: {p}\n"
-                        temp += "\n"
-                    f.write(f'{paper_authors[i].focus} paper:\n{temp}\n\n')
 
         self.topics = moderator.generate_topics(round=self, parent_topic=topic, paper_authors=paper_authors)
 

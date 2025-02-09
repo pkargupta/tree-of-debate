@@ -4,7 +4,7 @@ from tqdm import tqdm
 import json  # To save opp_pap to disk
 from utils import process_arxiv, extract_sections_from_markdown
 import os
-os.environ['CUDA_VISIBLE_DEVICES']=0,1
+os.environ['CUDA_VISIBLE_DEVICES']="0,1"
 def process_row(row):
     """
     Process a single row and return the processed data as a dictionary.
@@ -85,14 +85,14 @@ def combine_sheets():
         
         # Append data to output list
         output_data.append([
-            f_abstract, f_intro, row["title_focus"],
-            o_abstract, o_intro, row["title_opp"], row["topic"]
+            row["focus_paper"], f_abstract, f_intro, row["title_focus"],
+            row["opp_paper"], o_abstract, o_intro, row["title_opp"], row["topic"]
         ])
 
     # Save to a new TSV file
     output_df = pd.DataFrame(output_data, columns=[
-        "f_abstract", "f_intro", "title_focus", 
-        "o_abstract", "o_intro", "title_opp", "topic"
+        "focus_paper", "f_abstract", "f_intro", "title_focus", 
+        "opp_paper", "o_abstract", "o_intro", "title_opp", "topic"
     ])
     output_df.to_csv(file, sep="\t", index=False)
 

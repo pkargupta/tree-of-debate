@@ -6,6 +6,8 @@ from utils import process_arxiv,extract_sections_from_markdown
 from pydantic import BaseModel, StringConstraints, conlist
 from typing_extensions import Annotated
 from outlines.serve.vllm import JSONLogitsProcessor
+import os
+from unidecode import unidecode
 
 def process(s):
     # s = ''.join(s.split(' ')[:2])
@@ -28,7 +30,8 @@ def prompt_intro_abs(model,data):
     prompts = []
     # document_f = []
     # document_o = []
-    for i,sample in enumerate(data):
+    for i,sample in data.iterrows():
+        sample = data.iloc[i]
         # sample = row.to_dict()
         f_abs, f_intro, f_tit, o_abs, o_intro, opp_tit, topic = sample['f_abstract'], sample['f_intro'], sample['title_focus'], sample['o_abstract'], sample['o_intro'], sample['title_opp'], sample['topic']
         # f_abs, f_intro = extract_sections_from_markdown(f_pap,'Abstract'), extract_sections_from_markdown(f_pap,'Introduction')
@@ -46,8 +49,16 @@ def prompt_intro_abs(model,data):
                     sampling_params=sampling_params,
                     use_tqdm=True)
     # res = []
-    for i,sample in enumerate(data):
-        sample['prompt_intro_abs'] = summaries[i].outputs[0].text
+    # for i,sample in enumerate(data):
+    #     sample['prompt_intro_abs'] = summaries[i].outputs[0].text
+    comp_summaries = [json.loads(summaries[i].outputs[0].text) for i in range(len(summaries))]
+    similarities = [row['similarities'] for row in comp_summaries]
+    differences = [row['differences'] for row in comp_summaries]
+    conclusion = [row['conclusion'] for row in comp_summaries]
+
+    data['similarities'] = similarities
+    data['differences'] = differences
+    data['conclusion'] = conclusion
     return data
     # for i in summaries:
     #     res.append(i.outputs[0].text)
@@ -60,7 +71,7 @@ def split_posthoc(model,data):
     prompts_pap2 = []
     # document_f = []
     # document_o = []
-    for i,sample in enumerate(data):
+    for i,sample in data.iterrows():
         sample = data.iloc[i]
         f_abs, f_intro, f_tit, o_abs, o_intro, opp_tit, topic = sample['f_abstract'], sample['f_intro'], sample['title_focus'], sample['o_abstract'], sample['o_intro'], sample['title_opp'], sample['topic']
         f_prompt = f'You are an helpful assistant. Given abstract and intros, write a finegrained summary related to topic {topic} detailing key contributions, innovations and any other criteria you may find fit. <paper> Title: {f_tit} Abstract: {f_abs}\n Introduction {f_intro} </paper>'
@@ -69,6 +80,8 @@ def split_posthoc(model,data):
         o_prompt = f'You are an helpful assistant. Given abstract and intros, write a finegrained summary detailing key contributions, innovations and any other criteria you may find fit. <paper> Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro} </paper>'
         prompts_pap2.append(o_prompt)
         # document_o.append(f'Title: {opp_tit} Abstract: {o_abs}\n Introduction {o_intro}')
+    
+    # input(f'\n\n\n{i}, {len(data)}, {len(prompts_pap1)}, {len(prompts_pap2)}')
     f_summaries = model.generate(prompts_pap1,
                     sampling_params=sampling_params,
                     use_tqdm=True)
@@ -127,15 +140,15 @@ if __name__ == '__main__':
     model_server = LLM(model=args.base_llm,tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
 
     if args.baseline_type=="prompt_intro":
-        results = prompt_intro_abs(model_server,data)
+        data = prompt_intro_abs(model_server,data)
     elif args.baseline_type=="split":
-        results = split_posthoc(model_server,data)
+        data = split_posthoc(model_server,data)
     
-    output_path = f"opp_pap_data_{args.baseline_type}.json"
-    with open(output_path, 'w') as f:
-        json.dump(results, f, indent=4)
+    # output_path = f"opp_pap_data_{args.baseline_type}.json"
+    # with open(output_path, 'w') as f:
+    #     json.dump(results, f, indent=4)
     
-    print(f"Data written to {output_path}")
+    # print(f"Data written to {output_path}")
 
     # # print(len(results))
     # data['summary'] = results[0]
@@ -144,8 +157,18 @@ if __name__ == '__main__':
 
     # data.to_csv(f'results_{args.baseline_type}.tsv', sep='\t', index=False)
             # outputs = split_posthoc()
-        
+
     for index, row in data.iterrows():
-        shorthand = process(data['focus_paper']) + "-" + process(data['opp_paper'])
-        with open(f'logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
-            f.write(str(row['conclusion']))
+        shorthand = process(row['focus_paper']) + "-" + process(row['opp_paper'])
+        if not os.path.exists(f'../logs/{shorthand}/'):
+            os.mkdir(f'../logs/{shorthand}/')
+        with open(f'../logs/{shorthand}/summary_{args.baseline_type}.txt', 'w+') as f:
+            f.write(unidecode(str(row['conclusion'])))
+            f.write('\n')
+            f.write(unidecode(str(row['similarities'])))
+            f.write('\n')
+            f.write(unidecode(str(row['differences'])))
+        with open(f'../logs/{shorthand}/evidence_{args.baseline_type}.txt', 'w+') as f:
+            f.write(unidecode((str(row['f_abstract']) + " " + str(row['f_intro'])).replace('\n', ' ')))
+            f.write('\n')
+            f.write(unidecode((str(row['o_abstract']) + " " + str(row['o_intro'])).replace('\n', ' ')))

@@ -5,3 +5,4 @@ __pycache__/*
 *pyc
 *.sh
 logs/
+run.sh

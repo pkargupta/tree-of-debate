@@ -12,6 +12,25 @@ import os
 import json
 from data_pairer import parse_papers, parse_papers_url
 
+extra_log_folder = ""
+
+def collect_all_evidence(node: DebateNode, author_id):
+    def gather_all_evidence(node, author_id):
+        if len(node.children) == 0:
+            try:
+                return node.evidence[author_id]
+            except:
+                return []
+        evidence = node.evidence[author_id]
+        if evidence is None: evidence = []
+        for child in node.children:
+            evidence.extend(gather_all_evidence(child, author_id))
+        
+        return evidence
+    
+    all_evidence = gather_all_evidence(node, author_id)
+    return list(set(all_evidence))
+    
 def print_path(node: DebateNode, prefix=""):
     if len(node.children) == 0:
         # return prefix + node.round_topic['topic_title']
@@ -49,6 +68,12 @@ def print_path(node: DebateNode, prefix=""):
     
     return path, node_dict
 
+def get_conversation_of_path(node: DebateNode):
+    if node.parent is None:
+        return f"Topic: {node.round_topic}. {node.conversation_history}"
+    
+    return get_conversation_of_path(node.parent) + f"\n\nChild topic: {node.round_topic}. {node.conversation_history}"
+
 def topic_dict_to_str(topic):
     if topic['topic_title'] == topic['topic_description']:
         return topic['topic_title']
@@ -70,7 +95,8 @@ def run_code(args, f_pap, c_pap, model_server):
         paper = Paper(f_pap),
         focus=True,
         id=0,
-        log_dir=args.log_dir
+        log_file=f'{extra_log_folder}/llm_calls.txt',
+        is_retrieval=True
     )
 
     cited_paper = PaperAuthor(
@@ -78,17 +104,18 @@ def run_code(args, f_pap, c_pap, model_server):
         paper = Paper(c_pap),
         focus=False,
         id=1,
-        log_dir=args.log_dir
+        log_file=f'{extra_log_folder}/llm_calls.txt',
+        is_retrieval=True
     )
 
-    moderator = Moderator(model_server, args.log_dir)
+    moderator = Moderator(model_server, f'{extra_log_folder}/llm_calls.txt')
 
     paper_authors = [focus_paper, cited_paper]
-    leaf_node_label = {'topic_title': args.topic, 'topic_description': args.topic}
+    leaf_node_label = {'topic_title': topic, 'topic_description': topic}
 
     if args.log_dir != "":
-        with open(os.path.join(args.log_dir, 'self_deliberation.txt'), 'w') as f:
-            f.write(f'Topic: {args.topic}\n\n')
+        with open(os.path.join(extra_log_folder, 'self_deliberation.txt'), 'w') as f:
+            f.write(f'Topic: {topic}\n\n')
 
         with open(f'{args.log_dir}/llm_calls.txt', 'w') as f:
             f.write(f'LLM Calls:\n')
@@ -165,6 +192,44 @@ def run_code(args, f_pap, c_pap, model_server):
     # with open('temp.pkl', 'wb+') as f:
     #     pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
 
+    try:
+        summary = moderator.summarize_debate(conversation_history, similarities, differences)
+        paths = print_path(root_node)
+        with open(f'{args.log_dir}/summary_tod.txt', 'w+') as f:
+            f.write(summary + "\n")
+            f.write(str(similarities) + "\n")
+            f.write(str(differences) + "\n")
+            f.write("\n\n\n")
+            f.write("PATHS:\n")
+            f.write(paths)
+    except:
+        hi = 9 # do nothing
+
+    try:
+        summary_all, similarities_all, differences_all = moderator.summarize_debate_all_paths(conversation_history)
+        with open(f'{args.log_dir}/summary_tod_all.txt', 'w+') as f:
+            f.write(summary_all + "\n")
+            f.write(str(similarities_all) + "\n")
+            f.write(str(differences_all) + "\n")
+    except:
+        hi = 9
+
+    try:
+        summary_sub, similarities_sub, differences_sub = moderator.summarize_debate_sub_paths(conversation_paths)
+        with open(f'{args.log_dir}/summary_tod_sub.txt', 'w+') as f:
+            f.write(summary_sub + "\n")
+            f.write(str(similarities_sub) + "\n")
+            f.write(str(differences_sub) + "\n")
+    except:
+        hi = 9
+    
+    try:
+        with open(f'{args.log_dir}/evidence_tod.txt', 'a+') as f:
+            f.write('|'.join(collect_all_evidence(root_node, focus_paper.id)))
+            f.write('\n')
+            f.write('|'.join(collect_all_evidence(root_node, cited_paper.id)))
+    except:
+        hi = 9
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -196,3 +261,16 @@ if __name__ == '__main__':
     for item in data:
         run_code(args, item['focus'], item['cited'], model_server)
 
+        extra_log_folder = os.path.join(args.log_dir, 'tod')
+        if not os.path.exists(extra_log_folder):
+            os.mkdir(extra_log_folder)
+        
+        
+        parse_papers(focus_paper, cited_paper)
+
+        with open('data.json', 'r') as file:
+            data = json.load(file)
+
+        for item in data:
+            run_code(args, row['topic'], item['focus'], item['cited'])
+        exit()
