@@ -23,7 +23,7 @@ if __name__ == '__main__':
     with open(args.csv_file, 'r', encoding="utf-8") as f:
         rows = f.readlines()
 
-    for row in rows[2:11]:
+    for row in rows[1:2]:
         cols = row.split('\t')
         contributor, topic, paper_0_url, paper_0_title, paper_0_abstract, paper_0_intro, paper_1_url, paper_1_title, paper_1_abstract, paper_1_intro, method, cite = cols
 
