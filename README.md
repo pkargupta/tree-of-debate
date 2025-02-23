@@ -1,6 +1,6 @@
 # Tree-of-Debate: Multi-Persona Debate Trees Elicit Critical Thinking for Scientific Comparative Analysis
-<p align="center"><img src="https://https://github.com/pkargupta/tree-of-debate/tree/main/example_hierarchy.png" alt="Framework Diagram of Tree-of-Debate" width="200"/></p>
-<p align="center"><img src="https://https://github.com/pkargupta/tree-of-debate/tree/main/tods_framework.png" alt="Framework Diagram of Tree-of-Debate" width="350"/></p>
+<p align="center"><img src="https://github.com/pkargupta/tree-of-debate/blob/main/figs/example_hierarchy.png" alt="Tree-of-Debate Example" width="200"/></p>
+<p align="center"><img src="https://github.com/pkargupta/tree-of-debate/blob/main/figs/tods_framework.png" alt="Framework Diagram of Tree-of-Debate" width="350"/></p>
 
 This repository contains the source code for **Tree-of-Debate: Multi-Persona Debate Trees Elicit Critical Thinking for Scientific Comparative Analysis**.
 
@@ -8,8 +8,6 @@ This repository contains the source code for **Tree-of-Debate: Multi-Persona Deb
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Data Format](#data-format)
-- [Using GPT as Instructor and Verifier](#using-gpt-as-instructor-and-verifier)
 
 ## Installation
 The code is written in Python 3.8.10. The Python dependencies are summarized in the file `requirements.txt`. You can install them like this:
