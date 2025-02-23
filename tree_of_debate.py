@@ -130,23 +130,6 @@ def run_code(args, f_pap, c_pap, model_server):
             unique_e = list(set(e))
             f.write(str(unique_e))
             f.write('\n')
-            
-    # with open('temp.pkl', 'rb') as f:
-    #     queue_of_rounds, debated_rounds, conversation_history, root_node = pickle.load(f)
-    
-    # similarities, differences = [], []
-    # debated_rounds.extend(queue_of_rounds)
-    # for round in debated_rounds:
-    #     if len(round.children) > 0:
-    #         similarities.append(topic_dict_to_str(round.round_topic))
-    #     else:
-    #         differences.append(topic_dict_to_str(round.round_topic))
-
-
-    # summary = moderator.summarize_debate(conversation_history, similarities, differences)
-    
-    # with open(f'{args.log_dir}/summary.txt', 'w') as f:
-    #     f.write(summary)
 
     paths, tree_dict = print_path(root_node)
     with open(f'{args.log_dir}/path.txt', 'w') as f:
@@ -161,37 +144,3 @@ def run_code(args, f_pap, c_pap, model_server):
     path_summary = moderator.summarize_path_debate(paper_authors, leaf_node_label, json.dumps(tree_dict, indent=2))
     with open(f'{args.log_dir}/path_summary.txt', 'w') as f:
         f.write(path_summary)
-
-    # with open('temp.pkl', 'wb+') as f:
-    #     pickle.dump([queue_of_rounds, debated_rounds, conversation_history, root_node, similarities, differences], f)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--focus_paper", default="2406_11709")
-    parser.add_argument("--cited_paper", default="2310_10648")
-    parser.add_argument("--topic", default="wireless sensing of human activity")
-    parser.add_argument("--log_dir", default="logs")
-    parser.add_argument("--download_dir", default="/")
-    parser.add_argument('--no_arxiv', action=argparse.BooleanOptionalAction)
-
-    args = parser.parse_args()
-
-    if args.no_arxiv:
-        args.log_dir = f"{args.log_dir}/{args.focus_paper.split('.json')[0]}-{args.cited_paper.split('.json')[0]}"
-    else:
-        args.log_dir = f"{args.log_dir}/{args.focus_paper.split('.json')[0]}-{args.cited_paper.split('.json')[0]}"
-    
-    if not os.path.exists(args.log_dir):
-        os.makedirs(args.log_dir)
-    
-    parse_papers(args.focus_paper, args.cited_paper)
-    
-    with open('data.json', 'r') as file:
-        data = json.load(file)
-
-    model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=256,enable_prefix_caching=True)
-    # model_server = LLM(model="meta-llama/Meta-Llama-3.1-8B-Instruct",tensor_parallel_size=2,max_num_seqs=100,enable_prefix_caching=True)
-
-    for item in data:
-        run_code(args, item['focus'], item['cited'], model_server)

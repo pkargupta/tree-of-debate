@@ -11,16 +11,16 @@ from tree_of_debate_no_tree import run_no_tree_code
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--csv_file", default="dataset/tree_of_debate_dataset.tsv")
+    parser.add_argument("--tsv_file", default="dataset/tree_of_debate_dataset.tsv")
     parser.add_argument("--log", default="dataset/")
-    parser.add_argument("--experiment", default="tod") # options: tod, single, two, no-tree, no-retrieval
+    parser.add_argument("--experiment", default="tod") # options: tod, single, two, no-tree, no-delib
     
 
     args = parser.parse_args()
     
     model_server = LLM(model="nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",tensor_parallel_size=4,max_num_seqs=256,enable_prefix_caching=True)
 
-    with open(args.csv_file, 'r', encoding="utf-8") as f:
+    with open(args.tsv_file, 'r', encoding="utf-8") as f:
         rows = f.readlines()
 
     for row in rows:
@@ -49,7 +49,7 @@ if __name__ == '__main__':
             run_code(args, paper_0, paper_1, model_server)
         elif (args.experiment == 'single') or (args.experiment == 'two'):
             run_baseline_code(args, paper_0, paper_1, model_server)
-        elif args.experiment == 'no-retrieval':
+        elif args.experiment == 'no-delib':
             run_no_delib_code(args, paper_0, paper_1, model_server)
         elif args.experiment == 'no-tree':
             run_no_tree_code(args, paper_0, paper_1, model_server)
