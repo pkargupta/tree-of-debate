@@ -1,7 +1,7 @@
 # Tree-of-Debate: Multi-Persona Debate Trees Elicit Critical Thinking for Scientific Comparative Analysis
 <p align="center"><img src="https://github.com/pkargupta/tree-of-debate/blob/main/figs/tods_framework.png" alt="Framework Diagram of Tree-of-Debate"/></p>
 
-This repository contains the source code for **Tree-of-Debate: Multi-Persona Debate Trees Elicit Critical Thinking for Scientific Comparative Analysis**. This work has been accepted at [ACL 2025](https://2025.aclweb.org/).
+This repository contains the source code for **Tree-of-Debate: Multi-Persona Debate Trees Elicit Critical Thinking for Scientific Comparative Analysis**. This work has been accepted at [ACL 2025 (Oral)](https://2025.aclweb.org/).
 
 We introduce Tree-of-Debate (ToD), a framework which converts scientific papers into LLM personas that debate their respective novelties. To emphasize structured, critical reasoning rather than focusing solely on outcomes, ToD dynamically constructs a debate tree, enabling fine-grained analysis of independent novelty arguments within scholarly articles. Through experiments on scientific literature across various domains, evaluated by expert researchers, we demonstrate that ToD generates informative arguments, effectively contrasts papers, and supports researchers in their literature review.
 
@@ -10,6 +10,8 @@ We introduce Tree-of-Debate (ToD), a framework which converts scientific papers 
 - [Paper](https://arxiv.org/abs/2502.14767)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Video](#video)
+- [Citations](#-citations)
 
 <p align="center"><img src="https://github.com/pkargupta/tree-of-debate/blob/main/figs/example_hierarchy.png" alt="Tree-of-Debate Example" width="400"/></p>
 
@@ -29,6 +31,9 @@ The following are the primary arguments for Tree-of-Debate:
 - `--experiment` $\rightarrow$ the type of experiment to be performed. Select one of the experiment settings: `tod` for our full Tree-of-Debate method, `single` for the single stage baseline, `two` for the two-stage baseline, `no-tree` for the No-Tree ablation study, or `no-delib` for the No-Self-Deliberation ablation study.
 
 We provide our human evaluation instructions under the `evaluation` directory.
+
+## Video
+We have a video that explains the Tree-of-Debate framework and its evaluation. You can find it on [YouTube](https://youtu.be/HlMVvHnM5MM).
 
 ## 📖 Citations
 Please cite the paper and star this repo if you use Tree-of-Debate and find it interesting/useful, thanks! Feel free to open an issue if you have any questions.
